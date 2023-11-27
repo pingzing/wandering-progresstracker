@@ -1,0 +1,12 @@
+# macOS
+.DS_Store
+
+# web
+**/node_modules
+Extension/dist
+
+# safari
+**/xcdebugger
+Shared\ (Extension)/Resources/dist/
+**/xcuserdata
+**/*.xcuserstate

@@ -1,0 +1,10 @@
+{
+  "extension_name": {
+    "message": "Wandering ProgressTracker",
+    "description": "The display name for the extension."
+  },
+  "extension_description": {
+    "message": "I yam a description",
+    "description": "Description of what the extension does."
+  }
+}
