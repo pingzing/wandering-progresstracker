@@ -26,26 +26,10 @@ function onMessage(message: any, sender: Runtime.MessageSender, sendResponse: (x
       updateIcon(message.value as ColorScheme).then(sendResponse);
       return true;
     }
-    case 'requestToc': {
-      getToc().then(tocHtml => {
-        sendResponse(tocHtml);
-      })
-      return true;
-    }
   }
 }
 
 async function updateIcon(colorScheme: ColorScheme) {
   console.log('updating icon', colorScheme);
   // do work here
-}
-
-async function getToc(): Promise<string | null> {
-  const tocResponse = await fetch("https://wanderinginn.com/table-of-contents/");
-  if (!tocResponse.ok) {
-    console.log("Failed to fetch toc.");
-    return null;
-  }  
-  
-  return await tocResponse.text();
 }

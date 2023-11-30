@@ -1,71 +1,45 @@
 import browser from 'webextension-polyfill';
-import type { ChapterInfo, ChapterUserInfo, StoryUrl, UserData } from './models';
+import type { ChapterInfo, UserChapterInfo, StoryUrl, UserData } from './models';
 import { gzipSync, decompressSync, strFromU8, strToU8 } from 'fflate';
 
 class UserDataService {
+    private static readonly tocLastUpdatedKey = 'tocLastUpdated';
     private static readonly savedChapterChunkCountKey = `savedChaptersCount`;
     private static readonly savedChaptersKeyPrefix = 'savedChapters';
     private static readonly textEncoder = new TextEncoder();
     private static readonly textDecoder = new TextDecoder();
 
-    /**
-     * Get saved user data, including chapter progress.
-     */
-    public async getUserData(): Promise<UserData> {
-        const savedChapterCount = (await browser.storage.sync.get(UserDataService.savedChapterChunkCountKey))[
-            UserDataService.savedChapterChunkCountKey
-        ] as number | undefined;
-
-        if (!savedChapterCount || savedChapterCount === 0) {
-            const emptyUserData: UserData = {
-                savedChapters: new Map<StoryUrl, ChapterUserInfo>()
-            };
-            return emptyUserData;
+    public async getTocLastUpdated(): Promise<Date | null> {
+        const tocLastUpdated = (await browser.storage.sync.get(UserDataService.tocLastUpdatedKey))[UserDataService.tocLastUpdatedKey] as Date | undefined;
+        if (!tocLastUpdated) {
+            return null;
         }
 
-        return {
-            savedChapters: await this.getChaptersFromStorage()
-        };
+        return tocLastUpdated;
     }
 
-    /**
-     * Adds new chapters to saved chapter info.
-     * @param newChapters The set of chapters we've learned about, and don't have saved yet.
-     */
-    public async addNewChapters(newChapters: Map<StoryUrl, ChapterInfo>): Promise<void> {
-        const { savedChapters } = await this.getUserData();
-        for (const [url, chapterInfo] of newChapters) {
-            savedChapters.set(url, {
-                chapterIndex: chapterInfo.chapterIndex,
-                chapterName: chapterInfo.chapterName,
-                completed: false,
-                percentCompletion: 0
+    public async setTocLastUpdated(date: Date): Promise<void> {
+        try {
+            await browser.storage.sync.set({
+                [UserDataService.tocLastUpdatedKey]: date
             });
         }
-
-        await this.saveChaptersToStorage(savedChapters);
+        catch(e) {
+            console.log(`Failed to set tocLastUpdated: ${e}`);
+        }
     }
 
     /**
-     * Update saved chapter information. Can be used to update chapters we know about, or add new chapters.
-     * @param updatedChapters The set of chapters that need updating or adding.
+     * Retrieves persisted chapter information. If no information exists, will return an empty map.
+     * @returns 
      */
-    public async updateChapters(updatedChapters: Map<StoryUrl, ChapterUserInfo>): Promise<void> {
-        const { savedChapters } = await this.getUserData();
-        for (const [url, chapterInfo] of updatedChapters) {
-            savedChapters.set(url, chapterInfo);
-        }
-
-        await this.saveChaptersToStorage(savedChapters);
-    }
-
-    private async getChaptersFromStorage(): Promise<Map<StoryUrl, ChapterUserInfo>> {
+    public async getChaptersFromStorage(): Promise<Map<StoryUrl, UserChapterInfo>> {
         const chapterCount = (await browser.storage.sync.get(UserDataService.savedChapterChunkCountKey))[UserDataService.savedChapterChunkCountKey] as number | undefined;
         if (!chapterCount || chapterCount === 0) {
-            return new Map<StoryUrl, ChapterUserInfo>();
+            return new Map<StoryUrl, UserChapterInfo>();
         }
 
-        const retrievedChapters = new Map<StoryUrl, ChapterUserInfo>();
+        const retrievedChapters = new Map<StoryUrl, UserChapterInfo>();
         const keys = [...Array(chapterCount).keys()].map(x => `${UserDataService.savedChaptersKeyPrefix}-${x}`);
         const chunks = (await browser.storage.sync.get(keys));
         for (const key of keys) {
@@ -85,7 +59,7 @@ class UserDataService {
      * Warning: expensive.
      * @param allChapters **ALL** known chapters.
      */
-    private async saveChaptersToStorage(allChapters: Map<StoryUrl, ChapterUserInfo>): Promise<void> {
+    public async saveChaptersToStorage(allChapters: Map<StoryUrl, UserChapterInfo>): Promise<void> {
 
         // Break chapters into chunks, because there are too many to fit into a single storage entry. 
         // 10 is arbitrarily "probably small enough".
@@ -102,7 +76,7 @@ class UserDataService {
             });
 
             savedChapterCount += 1;
-        }        
+        }
 
         for (const chapterChunk of chaptersToSave) {
             await browser.storage.sync.set({
@@ -115,7 +89,7 @@ class UserDataService {
         });
     }
 
-    private serialize(chapterChunk: [StoryUrl, ChapterUserInfo][]): string {
+    private serialize(chapterChunk: [StoryUrl, UserChapterInfo][]): string {
         // When serializing, strip out the domain name to save space
         for (const entry of chapterChunk) {
             entry[0] = entry[0].replace(`https://wanderinginn.com`, ``);
@@ -131,14 +105,14 @@ class UserDataService {
         return stringifiedBytes;
     }
 
-    private deserialize(stringifiedCompressedBytes: string): [StoryUrl, ChapterUserInfo][] {
+    private deserialize(stringifiedCompressedBytes: string): [StoryUrl, UserChapterInfo][] {
         if (!stringifiedCompressedBytes.length || stringifiedCompressedBytes.length === 0) {
             throw new Error(`Invalid string length when calling deserialize. Received: ${stringifiedCompressedBytes}`);
         }
         const compressedBytes = strToU8(stringifiedCompressedBytes, true);
         const decompressedString = decompressSync(compressedBytes);
         const decodedString = UserDataService.textDecoder.decode(decompressedString);
-        const chapterChunks: [StoryUrl, ChapterUserInfo][] = JSON.parse(decodedString);
+        const chapterChunks: [StoryUrl, UserChapterInfo][] = JSON.parse(decodedString);
         for (const chunk of chapterChunks) {
             chunk[0] = `https://wanderinginn.com${chunk[0]}`;
         }

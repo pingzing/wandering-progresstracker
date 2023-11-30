@@ -1,4 +1,4 @@
-export type BrowserMessageType = 'getColorScheme' | 'gotColorScheme' | 'requestToc';
+export type BrowserMessageType = 'getColorScheme' | 'gotColorScheme';
 
 export type BrowserMessage = {
   type: BrowserMessageType;
@@ -25,7 +25,7 @@ export type ChapterInfo = {
   chapterName: string;
 }
 
-export type ChapterUserInfo = ChapterInfo & {
+export type UserChapterInfo = ChapterInfo & {
     /**
    * Only true if the user has clicked "next" while at the end of a chapter,
    * or explicitly marked a chapter as complete.
@@ -40,7 +40,7 @@ export type ChapterUserInfo = ChapterInfo & {
 };
 
 export type UserData = {
-  savedChapters: Map<StoryUrl, ChapterUserInfo>;
+  savedChapters: Map<StoryUrl, UserChapterInfo>;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
