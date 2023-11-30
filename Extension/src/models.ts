@@ -1,4 +1,4 @@
-export type BrowserMessageType = 'getColorScheme' | 'gotColorScheme';
+export type BrowserMessageType = 'getColorScheme' | 'gotColorScheme' | 'getChapters' | 'addNewChapters' | 'updateChapters';
 
 export type BrowserMessage = {
   type: BrowserMessageType;

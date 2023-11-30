@@ -4,18 +4,18 @@ import { gzipSync, decompressSync, strFromU8, strToU8 } from 'fflate';
 
 class UserDataService {
     private static readonly tocLastUpdatedKey = 'tocLastUpdated';
-    private static readonly savedChapterChunkCountKey = `savedChaptersCount`;
-    private static readonly savedChaptersKeyPrefix = 'savedChapters';
+    private static readonly savedChapterChunkCountKey = `savedChapterChunks`;
+    private static readonly savedChapterChunkKeyPrefix = 'chapterChunk';
     private static readonly textEncoder = new TextEncoder();
     private static readonly textDecoder = new TextDecoder();
 
     public async getTocLastUpdated(): Promise<Date | null> {
-        const tocLastUpdated = (await browser.storage.sync.get(UserDataService.tocLastUpdatedKey))[UserDataService.tocLastUpdatedKey] as Date | undefined;
+        const tocLastUpdated = (await browser.storage.sync.get(UserDataService.tocLastUpdatedKey))[UserDataService.tocLastUpdatedKey] as string | undefined;
         if (!tocLastUpdated) {
             return null;
         }
 
-        return tocLastUpdated;
+        return new Date(tocLastUpdated);
     }
 
     public async setTocLastUpdated(date: Date): Promise<void> {
@@ -30,17 +30,39 @@ class UserDataService {
     }
 
     /**
+     * Check to see if there exists some saved chapter data.
+     * Does not validate whether or not the data is entirely valid.
+     */
+    public async hasSavedChapterData(): Promise<boolean> {
+        const chunkCount = (await browser.storage.sync.get(UserDataService.savedChapterChunkCountKey))[UserDataService.savedChapterChunkCountKey] as number | undefined;
+        if (!chunkCount || chunkCount === 0) {
+            return false;
+        }
+
+        const keys = [...Array(chunkCount).keys()].map(x => `${UserDataService.savedChapterChunkKeyPrefix}-${x}`);
+        const chunks = (await browser.storage.sync.get(keys));
+        for (const key of keys) {
+            // If at least one chunk exists, we'll call this good enough.
+            // TODO for a later date: report any missing chunks?
+            if (chunks[key] !== undefined) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Retrieves persisted chapter information. If no information exists, will return an empty map.
-     * @returns 
      */
     public async getChaptersFromStorage(): Promise<Map<StoryUrl, UserChapterInfo>> {
-        const chapterCount = (await browser.storage.sync.get(UserDataService.savedChapterChunkCountKey))[UserDataService.savedChapterChunkCountKey] as number | undefined;
-        if (!chapterCount || chapterCount === 0) {
+        const chunkCount = (await browser.storage.sync.get(UserDataService.savedChapterChunkCountKey))[UserDataService.savedChapterChunkCountKey] as number | undefined;
+        if (!chunkCount || chunkCount === 0) {
             return new Map<StoryUrl, UserChapterInfo>();
         }
 
         const retrievedChapters = new Map<StoryUrl, UserChapterInfo>();
-        const keys = [...Array(chapterCount).keys()].map(x => `${UserDataService.savedChaptersKeyPrefix}-${x}`);
+        const keys = [...Array(chunkCount).keys()].map(x => `${UserDataService.savedChapterChunkKeyPrefix}-${x}`);
         const chunks = (await browser.storage.sync.get(keys));
         for (const key of keys) {
             const serializedChunk = chunks[key];
@@ -66,16 +88,16 @@ class UserDataService {
         const chunkSize = 10;
         const iterableChapters = Array.from(allChapters.entries());
         const chaptersToSave: { key: string, value: string }[] = [];
-        let savedChapterCount = 0;
+        let savedChapterChunkCount = 0;
         for (let i = 0; i < iterableChapters.length; i += chunkSize) {
             const chunk = iterableChapters.slice(i, i + chunkSize);
 
             chaptersToSave.push({
-                key: `${UserDataService.savedChaptersKeyPrefix}-${savedChapterCount}`,
+                key: `${UserDataService.savedChapterChunkKeyPrefix}-${savedChapterChunkCount}`,
                 value: this.serialize(chunk),
             });
 
-            savedChapterCount += 1;
+            savedChapterChunkCount += 1;
         }
 
         for (const chapterChunk of chaptersToSave) {
@@ -85,7 +107,7 @@ class UserDataService {
         }
 
         await browser.storage.sync.set({
-            [UserDataService.savedChapterChunkCountKey]: savedChapterCount
+            [UserDataService.savedChapterChunkCountKey]: savedChapterChunkCount
         });
     }
 

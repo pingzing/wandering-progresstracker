@@ -1,13 +1,13 @@
 import browser from 'webextension-polyfill';
-import { type BrowserMessage, type BrowserMessageType, type ColorScheme } from './models';
+import { type BrowserMessage, type BrowserMessageType, type ColorScheme, type StoryUrl, type UserChapterInfo } from './models';
 import * as tocService from './tocService';
 import userDataService from './userDataService';
-import chapterService from './chapterService';
+import * as serialization from './serialization';
 
 // Entry point
 (async () => {
 
-  const tocUrl = "https://wanderinginn.com/table-of-contents";
+  const tocUrl = "https://wanderinginn.com/table-of-contents/";
   let onToc: boolean = false;
 
   // don't use .startsWith() for checking the tocUrl, because the user might have ebook or sorting turned on,
@@ -17,11 +17,17 @@ import chapterService from './chapterService';
     const tocContents = document;
     const chapters = tocService.getChaptersFromToc(tocContents);
     if (chapters) {
-      chapterService.addNewChapters(chapters);
+      await browser.runtime.sendMessage(<BrowserMessage>{
+        type: 'addNewChapters',
+        value: serialization.mapToString(chapters)
+      })
     }
   }
 
-  const chapters = await chapterService.getChapters();
+  const chapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(
+    await browser.runtime.sendMessage(<BrowserMessage>{
+      type: 'getChapters',
+    }));
 
   if (onToc) {
     // TODO: Bonus points: implement completion bars on the ToC so people can see how far along they are per-chapter.
@@ -33,6 +39,7 @@ import chapterService from './chapterService';
     //   - each chapter-entry container gains position: relative
     //   - we create a new div child below each with the percentage completed, and the following style:
     //   - display: inline-block; position: absolute; top: 25%; right: 1%;
+    console.log(`You're on the ToC!`);
     return;
   }
 

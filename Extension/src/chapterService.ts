@@ -8,9 +8,13 @@ class ChapterService {
     private readonly emptyMap = new Map<StoryUrl, UserChapterInfo>();
 
     public async getChapters(): Promise<Map<StoryUrl, UserChapterInfo>> {
+
+        // Update if...
+        let shouldUpdate: boolean = false;
+
+        // 1. The ToC is out of date, or has never been fetched
         const tocLastUpdated: Date | null = await userDataService.getTocLastUpdated();
         const utcNow = new Date(Date.now());
-        let shouldUpdate: boolean = false;
         if (!tocLastUpdated) {
             shouldUpdate = true;
         } else {
@@ -19,6 +23,12 @@ class ChapterService {
             if (timeDiffMins > 60) { // i.e. get new ToC once every hour
                 shouldUpdate = true;
             }
+        }
+
+        // 2. We don't have any in-memory data, AND have no saved data
+        if (!this.userChapters) {
+            const hasSavedData = await userDataService.hasSavedChapterData();
+            shouldUpdate = !hasSavedData;
         }
 
         if (shouldUpdate) {
@@ -42,7 +52,7 @@ class ChapterService {
         return this.userChapters;
     }
 
-    public async addNewChapters(parsedChapters: Map<StoryUrl, ChapterInfo>): Promise<void> {
+    public addNewChapters(parsedChapters: Map<StoryUrl, ChapterInfo>): void {
         let chaptersToAdd = new Map<StoryUrl, ChapterInfo>();
         if (!this.userChapters) {
             this.userChapters = new Map<StoryUrl, UserChapterInfo>();
