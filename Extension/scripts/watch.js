@@ -21,6 +21,12 @@ async function main() {
     outfile: './dist/content.js'
   })).watch();
 
+  const cssJob = (await esbuild.context({
+    ...commonConfig,
+    entryPoints: ['./src/content.css'],
+    outfile: './dist/content.css'
+  })).watch();
+
   const backgroundJob = (await esbuild.context({
     ...commonConfig,
     entryPoints: ['./src/background.ts'],
@@ -67,6 +73,6 @@ async function main() {
   })).watch();
   
 
-  await Promise.all([contentJob, backgroundJob, popupJob, settingsJob, onboardingJob]);
+  await Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob, onboardingJob]);
   console.log('⚡ Watching...');
 }

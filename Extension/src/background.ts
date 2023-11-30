@@ -36,12 +36,12 @@ function onMessage(message: any, sender: Runtime.MessageSender, sendResponse: (x
       return true;
     }
     case 'addNewChapters': {
-      const newChapters = stringToMap<StoryUrl, ChapterInfo>(message);
+      const newChapters = stringToMap<StoryUrl, ChapterInfo>(message.value);
       addChapters(newChapters);
       return;
     }
     case 'updateChapters': {
-      const addedChapters = stringToMap<StoryUrl, UserChapterInfo>(message);
+      const addedChapters = stringToMap<StoryUrl, UserChapterInfo>(message.value);
       updateChapters(addedChapters).then(sendResponse);
       return true;
     }

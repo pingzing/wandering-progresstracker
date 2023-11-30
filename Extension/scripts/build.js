@@ -17,10 +17,17 @@ async function main() {
     tsconfig: './tsconfig.json',
     drop: isProdBuild ? ['console'] : undefined
   };
-  const contentJob = build({
+
+  const contentJob = build({    
     ...commonConfig,
     entryPoints: ['./src/content.ts'],
     outfile: './dist/content.js'
+  });
+
+  const cssJob = build({
+    ...commonConfig,
+    entryPoints: ['./src/content.css'],
+    outfile: './dist/content.css'
   });
 
   const backgroundJob = build({
@@ -68,7 +75,7 @@ async function main() {
     ]
   });
 
-  return Promise.all([contentJob, backgroundJob, popupJob, settingsJob, onboardingJob]).then(
+  return Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob, onboardingJob]).then(
     () => console.log('⚡ Compiled')
   );
 }

@@ -23,6 +23,9 @@
   "content_scripts": [
     {
       "js": ["dist/content.js"],
+      "css": [
+        "dist/content.css"
+      ],
       "matches": ["*://wanderinginn.com/*"]
     }
   ],

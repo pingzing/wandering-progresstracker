@@ -1,0 +1,15 @@
+.bookmark {
+    background-color: #b95050;
+    color: #FFF;
+    font-size: 0.85em;
+    border: 1px solid rgba(0,0,0,0.15);
+    position: absolute;
+    text-shadow: -1px -1px rgba(0,0,0,0.1);
+    font-family: Arial, Sans-serif;
+    height: 4px;
+    left: 0;
+    right: 0;
+    border-left: none;
+    border-right: none;
+    transition: top 0.2s;
+}

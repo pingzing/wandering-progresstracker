@@ -1,4 +1,9 @@
-export type BrowserMessageType = 'getColorScheme' | 'gotColorScheme' | 'getChapters' | 'addNewChapters' | 'updateChapters';
+export type BrowserMessageType =
+  'getColorScheme' |
+  'gotColorScheme' |
+  'getChapters' |
+  'addNewChapters' |
+  'updateChapters';
 
 export type BrowserMessage = {
   type: BrowserMessageType;
@@ -6,14 +11,13 @@ export type BrowserMessage = {
 };
 
 export type AppSettings = {
-  displayHelpMessage: boolean;
   tocLastChecked: Date | null;
 };
 
 export type StoryUrl = string;
 
 export type ChapterInfo = {
-  
+
   /**
    * Zero-indexed chapter number.
    */
@@ -26,17 +30,23 @@ export type ChapterInfo = {
 }
 
 export type UserChapterInfo = ChapterInfo & {
-    /**
-   * Only true if the user has clicked "next" while at the end of a chapter,
-   * or explicitly marked a chapter as complete.
-   */
-    completed: boolean;
+  /**
+ * Only true if the user has clicked "next" while at the end of a chapter,
+ * or explicitly marked a chapter as complete.
+ */
+  completed: boolean;
 
-    /**
-     * Value between 0.0 and 1.0.
-     * A value of 1.0 does **not** necessarily imply completion.
-     */
-    percentCompletion: number;
+  /**
+   * Value between 0.0 and 1.0.
+   * A value of 1.0 does **not** necessarily imply completion.
+   */
+  percentCompletion: number;
+
+  /**
+   * The index of the <p> element at which the bookmark should be placed.
+   * Null if the user has finished, or not yet started this chapter.
+   */
+  paragraphIndex: number | null;
 };
 
 export type UserData = {
@@ -44,7 +54,6 @@ export type UserData = {
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
-  displayHelpMessage: true,
   tocLastChecked: null,
 };
 
