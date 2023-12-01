@@ -3,7 +3,9 @@ export type BrowserMessageType =
   'gotColorScheme' |
   'getChapters' |
   'addNewChapters' |
-  'updateChapters';
+  'updateChapters' |
+  'serializeAllToUrl' |
+  'serializeChapterToUrl';
 
 export type BrowserMessage = {
   type: BrowserMessageType;
@@ -39,6 +41,9 @@ export type UserChapterInfo = ChapterInfo & {
   /**
    * Value between 0.0 and 1.0.
    * A value of 1.0 does **not** necessarily imply completion.
+   * 
+   * Used for display on the ToC. Should not be used for scrolling unless
+   * paragraphIndex is null and we have no other choice.
    */
   percentCompletion: number;
 

@@ -7,11 +7,11 @@
   "version": "1.0.0",
 
   "icons": {
-    "48": "images/app_icon_48px.png",
-    "96": "images/app_icon_96px.png",
-    "128": "images/app_icon_128px.png",
-    "256": "images/app_icon_256px.png",
-    "512": "images/app_icon_512px.png"
+    "48": "images/icon.png",
+    "96": "images/icon.png",
+    "128": "images/icon.png",
+    "256": "images/icon.png",
+    "512": "images/icon.png"
   },
 
   "background": {
@@ -42,7 +42,10 @@
     }
   },
 
-  "permissions": ["storage"],
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
 
   "options_ui": {
     "page": "public/settings.html",

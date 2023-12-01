@@ -84,6 +84,15 @@ class ChapterService {
         for (const [updated, chapterInfo] of updatedChapters) {
             this.userChapters.set(updated, chapterInfo);
         }
+
+        // TODO: only do this occasionally (on tab close?)
+        // rather than *every* update
+        try {
+            await userDataService.saveChaptersToStorage(this.userChapters);
+        }
+        catch (e) {
+            console.log(`Failed to persist chapters to storage. Error: ${e}`);
+        }
     }
 
     private async getToc(): Promise<Document | null> {
