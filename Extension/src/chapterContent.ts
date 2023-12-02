@@ -75,6 +75,10 @@ export class ChapterContent {
             this.bookmarkDiv.style.marginTop = '-4px';
             this.bookmarkDiv.style.top = `${Math.floor(paragraphTop - articleTop)}px`;
             this.bookmarkY = Math.floor(paragraphTop - articleTop);
+
+            // TODO: Make this a setting instead of unconditional
+            this.hideBackgrounds();
+
             paragraph.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
@@ -142,6 +146,16 @@ export class ChapterContent {
                 type: 'updateChapters',
                 value: updateChapterPayload
             });
+        }
+    }
+
+    private hideBackgrounds() {
+        // parallax perf really sucks in Firefox, especailly on mobile, so hide them
+        // we'll make this a user-configurable setting later
+        const parallaxLayers = document.getElementsByClassName('winter-parallax-layer');
+        for (let i = 0; i < parallaxLayers.length; i++) {
+            const layer = parallaxLayers[i] as HTMLElement;
+            layer.style.display = `none`;
         }
     }
 
