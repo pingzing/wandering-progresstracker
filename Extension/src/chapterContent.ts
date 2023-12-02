@@ -1,12 +1,12 @@
 import browser from 'webextension-polyfill';
 import type { BrowserMessage, StoryUrl, UserChapterInfo } from "./models";
-import { mapToString } from "./serialization";
+import { mapToString, serializeAllToUrl, serializeChapterToUrl } from "./serialization";
 import { debounce } from "./timing";
 
 export class ChapterContent {
     private chapters: Map<StoryUrl, UserChapterInfo>;
     private currentChapter: UserChapterInfo;
-    private url: string; // all extra parms stripped off
+    private url: string; // all extra params stripped off
     private previousScrollY: number = 0;
     private bookmarkY: number = 0; // Relative to the <article> tag, *not* the first paragraph.
 
@@ -49,6 +49,9 @@ export class ChapterContent {
             return;
         }
 
+        // Inject extension control button onto chapter
+        this.injectWptButton(this.articleTag);
+
         // ---Initial bookmark setup---
 
         // offsetParent filter removes any hidden paragraphs
@@ -69,6 +72,7 @@ export class ChapterContent {
         if (this.currentChapter.paragraphIndex) {
             const paragraph = this.contentParagraphs[this.currentChapter.paragraphIndex];
             const paragraphTop = this.getAbsoluteY(paragraph);
+            this.bookmarkDiv.style.marginTop = '-4px';
             this.bookmarkDiv.style.top = `${Math.floor(paragraphTop - articleTop)}px`;
             this.bookmarkY = Math.floor(paragraphTop - articleTop);
             paragraph.scrollIntoView({
@@ -95,10 +99,10 @@ export class ChapterContent {
 
         // TODO: HTML replacement should include
         // - Content scrollbar at the top of the screen
-        // - Bookmark red line thingy
+        // - Bookmark red line thingy (DONE)
         // - onclick handler for all <p> elements
         // - floating box for <p> handler that allows bookmarking
-        // - onscroll handler that tracks further-scrolled position on page 
+        // - onscroll handler that tracks further-scrolled position on page  (DONE)
         //    (with throttle so a brief jaunt to the bottom doesn't count)
         //    (with range, so scrolling *beyond* the end of the actual content won't count as finishing)
     }
@@ -139,6 +143,36 @@ export class ChapterContent {
                 value: updateChapterPayload
             });
         }
+    }
+
+    private injectWptButton(articleTag: HTMLElement): void {
+        // Remove overflow: hidden from <main> tag, as its an ancestor of the WPT button, and will prevent sticky from working
+        const mainTagResponse = document.getElementsByTagName('main');
+        if (mainTagResponse.length === 0) {
+            console.log(`Unable to find <main> tag in chapter. Will not attempt to disable its overflow: hidden rule.`);
+        } else {
+            const mainTag = mainTagResponse[0];
+            mainTag.style.overflow = 'visible';
+        }
+
+        // TODO: Make button pop up menu that allows you to do other stuff
+        const wptMenuButton = document.createElement('button');
+        wptMenuButton.type = 'button';
+        wptMenuButton.textContent = "WPT Menu";
+        wptMenuButton.style.position = `sticky`;
+        wptMenuButton.style.bottom = `0`;
+        wptMenuButton.style.width = `100%`;
+        wptMenuButton.onclick = (ev) => {
+            browser.runtime.sendMessage(<BrowserMessage>{
+                type: 'getChapters',
+            }).then((chapterString: string) => {
+                const url = serializeChapterToUrl(chapterString);
+                history.replaceState(``, ``, url);
+            });
+        };
+        // a <br> so the menu button isn't all up on the nav buttons
+        articleTag.appendChild(document.createElement('br'));
+        articleTag.appendChild(wptMenuButton);
     }
 
     private paragraphBinarySearch(array: HTMLParagraphElement[], startingYCoord: number): HTMLParagraphElement {

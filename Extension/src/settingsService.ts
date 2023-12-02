@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import { type AppSettings, DEFAULT_SETTINGS } from './models';
 
+// Placeholder for now
 class SettingsService {
   private static readonly settingsKey = 'settings';
   

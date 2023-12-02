@@ -4,7 +4,7 @@
     "description": "The display name for the extension."
   },
   "extension_description": {
-    "message": "I yam a description",
+    "message": "Tracks reading progress for the Wandering Inn web serial, and allows syncing of that progress across multiple devices.",
     "description": "Description of what the extension does."
   }
 }

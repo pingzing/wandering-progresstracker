@@ -62,20 +62,7 @@ async function main() {
     ]
   });
 
-  const onboardingJob = build({
-    ...commonConfig,
-    entryPoints: ['./src/onboarding/onboarding.ts'],
-    outbase: './src/onboarding',
-    outdir: './dist',
-    mainFields: ['svelte', 'module', 'main', 'browser'],
-    plugins: [
-      sveltePlugin({
-        preprocess: sveltePreprocess()
-      })
-    ]
-  });
-
-  return Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob, onboardingJob]).then(
+  return Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob]).then(
     () => console.log('⚡ Compiled')
   );
 }

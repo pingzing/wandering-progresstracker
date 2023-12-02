@@ -1,37 +1,83 @@
 <script lang="ts">
-  import { tabs } from 'webextension-polyfill';
-  import type { BrowserMessage } from '../models';
+  import Browser from 'webextension-polyfill';
 
-  // This is shared for both the popup and the settings page
+  const wanderingInnHostPermission = '*://wanderinginn.com/*';
+  const inPopup = document.location.href.endsWith(`popup.html`);
 
-  async function shareAllClicked(): Promise<void> {
-    const tab = (await tabs.query({ active: true, currentWindow: true }))[0];
+  let enabled: boolean = false;
 
-    tabs.sendMessage(tab.id!, <BrowserMessage>{
-      type: 'serializeAllToUrl'
-    });
+  Browser.permissions.contains({
+    origins: [wanderingInnHostPermission]
+  }).then(x => enabled = x);
+
+  Browser.permissions.onRemoved.addListener(onPermissionRemoved);
+  Browser.permissions.onAdded.addListener(onPermissionAdded);
+
+  function onPermissionRemoved(permissions: Browser.Permissions.Permissions): void {
+    if (permissions.origins?.some(x => wanderingInnHostPermission)) {
+      enabled = false;
+    }
   }
 
-  async function shareChapterClicked(): Promise<void> {
-    const tab = (await tabs.query({ active: true, currentWindow: true }))[0];
+  function onPermissionAdded(permissions: Browser.Permissions.Permissions): void {
+    if (permissions.origins?.some(x => wanderingInnHostPermission)) {
+      enabled = true;
+    }
+  }
 
-    tabs.sendMessage(tab.id!, <BrowserMessage>{
-      type: 'serializeChapterToUrl'
+  async function onEnabledClicked(): Promise<void> {    
+    Browser.permissions.request({
+      origins: [wanderingInnHostPermission]
     });
+    if (inPopup) {
+      window.close();
+    }
+    // updated 'enabled' is handled by the event handlers up above
   }
 </script>
 
-<div>
-  <h1>Wandering ProgressTracker</h1>
-  <button type="button" on:click={shareAllClicked}>Serialize all to URL</button>
-  <button type="button" on:click={shareChapterClicked}
-    >Serialize current chapter to URL</button
-  >
+<div class="root-div">
+  <h2>Wandering ProgressTracker</h2>
+  Welcome to Wandering ProgressTracker!
+  Click the button below, and click 'Allow' to activate the extension!
+  <br>
+  <div id="enabled-row">
+    Status:
+    {#if enabled}
+      <span class="enabled">Enabled</span>
+    {:else}
+      <span class="disabled">Disabled</span>
+    {/if}
+  </div>
+  <br>
+  {#if enabled}
+  You're good to go. Feel free to close this {#if inPopup} popup!{:else} tab!{/if}
+  {:else}
+  <button type="button" on:click={onEnabledClicked}>Enable!</button>
+  {/if}
 </div>
 
 <style>
-  div {
+  .root-div {
+    margin: auto;
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+    align-items: center;
+    max-width: 350px;
+    gap: 5px;
+  }
+  .root-div button {
+    width: 100%;
+  }
+  .root-div #enabled-row {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+  }
+  .enabled {
+    color: green;
+  }
+  .disabled {
+    color: red;
   }
 </style>

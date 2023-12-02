@@ -15,7 +15,7 @@ import { mapToString, stringToMap } from './serialization';
 runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
     tabs.create({
-      url: '../public/onboarding.html'
+      url: '../public/settings.html'
     })
   } else { // browser_update or update
     // TODO: Probably nothing.
@@ -42,7 +42,11 @@ function onMessage(message: any, sender: Runtime.MessageSender, sendResponse: (x
     }
     case 'updateChapters': {
       const addedChapters = stringToMap<StoryUrl, UserChapterInfo>(message.value);
-      updateChapters(addedChapters).then(sendResponse);
+      updateChapters(addedChapters).then(updatedMap => {
+        if (updatedMap) {
+          sendResponse(mapToString(updatedMap));
+        }
+      });
       return true;
     }
   }
@@ -56,7 +60,7 @@ function addChapters(parsedChapters: Map<StoryUrl, ChapterInfo>): void {
   return chapterService.addNewChapters(parsedChapters);
 }
 
-function updateChapters(updatedChapters: Map<StoryUrl, UserChapterInfo>): Promise<void> {
+function updateChapters(updatedChapters: Map<StoryUrl, UserChapterInfo>): Promise<Map<StoryUrl, ChapterInfo> | null> {
   return chapterService.updateChapters(updatedChapters);
 }
 

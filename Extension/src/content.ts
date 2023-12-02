@@ -1,48 +1,22 @@
 import browser from 'webextension-polyfill';
 import { type BrowserMessage, type BrowserMessageType, type ColorScheme, type StoryUrl, type UserChapterInfo } from './models';
-import * as tocService from './tocService';
-import userDataService from './userDataService';
+import * as tocService from './tocService'
 import * as serialization from './serialization';
-import { mapToString } from './serialization';
-import { debounce } from './timing';
+import { serializeAllToUrl, serializeChapterToUrl } from './serialization';
 import { ChapterContent } from './chapterContent';
+import { ChapterStateKey, FullStateKey } from './consts';
 
 setupMessageHandlers();
-if (document.readyState === 'complete') {
-  onLoaded();
-} else {
+if (document.readyState === 'loading') {
   addEventListener('DOMContentLoaded', onLoaded);
+} else {
+  onLoaded();
 }
 
 async function onLoaded(): Promise<void> {
   const tocUrl = "https://wanderinginn.com/table-of-contents/";
   let onToc: boolean = false;
-  let chapterContent: ChapterContent;  
-
-  // TODO: Test stuff
-  // Since we can't use popups on mobile, we'll have to inject some UI
-  // that allows users to select sharing options onto the page itself
-  // this is a very dirty PoC that does that
-
-  // Button styling notes:
-  // position: sticky
-  // bottom: 0
-  // Insert it just after <aticle>, BUT!!!
-  // <main> has an `overflow: hidden` that appears to serve no purpose
-  // that prevents the sticky-ing. That needs to be turned off for this to work.
-  const article = document.getElementById('post-16343');
-  const tempButton = document.createElement('button');
-  tempButton.type = 'button';
-  tempButton.textContent = "Serialize Chapter to URL";
-  tempButton.onclick = (ev) => {
-    browser.runtime.sendMessage(<BrowserMessage>{
-      type: 'getChapters',
-    }).then((chapterString: string) => {
-      serializeChapterToUrl(chapterString);
-    });
-  };
-  article?.prepend(tempButton);
-  // 
+  let chapterContent: ChapterContent; // holding onto this so it doesn't get GC'ed. Might not matter?
 
   // strip extra query params off URL, because we'll be using those to send around data.
   const urlNoParams = window.location.origin + window.location.pathname;
@@ -59,13 +33,53 @@ async function onLoaded(): Promise<void> {
     }
   }
 
-  // TODO: Check for the `wpt` and `wptc` query params: if they exist, parse them,
-  // update local state accordingly, and then strip them from the URL via replaceState.
-
-  const chapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(
+  let chapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(
     await browser.runtime.sendMessage(<BrowserMessage>{
       type: 'getChapters',
     }));
+
+  const currentUrl = new URL(window.location.href);
+
+  // TODO: Move these checks out into functions or their own class.
+  if (currentUrl.searchParams.has(FullStateKey)) {
+    const fullState = currentUrl.searchParams.get(FullStateKey)!;
+    const paragraphIndices: number[] = fullState.split('.').map(x => parseInt(x, 10));
+
+    // probably over-cautious, because we generally create the Map in chapter order, but JUST IN CASE
+    // sort it to ensure it matches the order of the received paragraph indices
+    const sortedChapters = Array.from(chapters).sort((a, b) => a[1].chapterIndex - b[1].chapterIndex);
+    for (let i = 0; i < paragraphIndices.length; i++) {
+      const paragraphIndex = paragraphIndices[i];
+      const chapter = sortedChapters[i];
+      chapter[1].paragraphIndex = paragraphIndex;
+    }
+    const updatedMap = new Map(sortedChapters);
+
+    const response = await browser.runtime.sendMessage(<BrowserMessage>{
+      type: 'updateChapters',
+      value: serialization.mapToString(updatedMap)
+    });
+    if (response) {
+      chapters = serialization.stringToMap(response);
+    }
+  }
+  if (currentUrl.searchParams.has(ChapterStateKey)) {
+    const payload = currentUrl.searchParams.get(ChapterStateKey)!;
+    try {
+      const chapterInfo: UserChapterInfo = JSON.parse(payload);
+      const updatedSingleChapterMap = new Map();
+      updatedSingleChapterMap.set(urlNoParams, chapterInfo);
+      const response = await browser.runtime.sendMessage(<BrowserMessage>{
+        type: 'updateChapters',
+        value: serialization.mapToString(updatedSingleChapterMap)
+      });
+      if (response) {
+        chapters = serialization.stringToMap(response);
+      }
+    } catch (e) {
+      console.log(`Unable to parse UserChapterInfo object from 'wptc' query param. Skipping...`);
+    }
+  }
 
   if (onToc) {
     // TODO: Bonus points: implement completion bars on the ToC so people can see how far along they are per-chapter.
@@ -84,6 +98,7 @@ async function onLoaded(): Promise<void> {
   // Chapter injection
   if (chapters.has(urlNoParams)) {
     chapterContent = new ChapterContent(chapters, urlNoParams);
+    return;
   }
 }
 
@@ -95,11 +110,11 @@ function setupMessageHandlers(): void {
         return Promise.resolve(getColorScheme());
       }
       case 'serializeAllToUrl': {
-        // get chapters as big string, stuff in URL bar as query param
         browser.runtime.sendMessage(<BrowserMessage>{
           type: 'getChapters',
         }).then((chapterString: string) => {
-          serializeAllToUrl(chapterString);
+          const url = serializeAllToUrl(chapterString);
+          history.pushState("", "", url); // TODO: replaceState instead?
         });
         break;
       }
@@ -107,7 +122,8 @@ function setupMessageHandlers(): void {
         browser.runtime.sendMessage(<BrowserMessage>{
           type: 'getChapters',
         }).then((chapterString: string) => {
-          serializeChapterToUrl(chapterString);
+          const url = serializeChapterToUrl(chapterString);
+          history.pushState("", "", url); // TODO: replaceState instead?
         });
         break;
       }
@@ -115,32 +131,7 @@ function setupMessageHandlers(): void {
   });
 }
 
-function serializeAllToUrl(mapString: string): void {
-  const map = serialization.stringToMap<StoryUrl, UserChapterInfo>(mapString);
-  const completions: number[] = [];
-  for (const entry of map) {
-    completions.push(entry[1].paragraphIndex ?? 0);
-  }
-  const completionString = completions.join(`.`);
-  const chapterUrl = window.location.origin + window.location.pathname;
-  const url = new URL(chapterUrl);
-  url.searchParams.append("wpt", completionString);
-  history.pushState("", "", url);
-}
 
-function serializeChapterToUrl(mapString: string): void {
-  const map = serialization.stringToMap<StoryUrl, UserChapterInfo>(mapString);
-  const chapterUrl = window.location.origin + window.location.pathname;
-  const chapterData = map.get(chapterUrl);
-  if (!chapterData) {
-    console.log(`No chapter data found for ${chapterUrl}. Can't serialize.`);
-    return;
-  }
-  const dataString = JSON.stringify(chapterData);
-  const url = new URL(chapterUrl);
-  url.searchParams.append(`wptc`, dataString);
-  history.pushState(``, ``, url);
-}
 
 function getColorScheme() {
   let scheme: ColorScheme = 'light';

@@ -76,10 +76,10 @@ class ChapterService {
         }
     }
 
-    public async updateChapters(updatedChapters: Map<StoryUrl, UserChapterInfo>): Promise<void> {
+    public async updateChapters(updatedChapters: Map<StoryUrl, UserChapterInfo>): Promise<Map<StoryUrl, UserChapterInfo> | null> {
         if (!this.userChapters) {
             console.log(`ChapterService's userChapters hasn't benn initialized yet. Cannot update chapter info.`);
-            return;
+            return null;
         }
         for (const [updated, chapterInfo] of updatedChapters) {
             this.userChapters.set(updated, chapterInfo);
@@ -93,6 +93,8 @@ class ChapterService {
         catch (e) {
             console.log(`Failed to persist chapters to storage. Error: ${e}`);
         }
+
+        return this.userChapters;
     }
 
     private async getToc(): Promise<Document | null> {

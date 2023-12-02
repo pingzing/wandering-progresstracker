@@ -58,6 +58,7 @@ export type UserData = {
   savedChapters: Map<StoryUrl, UserChapterInfo>;
 };
 
+// Placeholder, for now.
 export const DEFAULT_SETTINGS: AppSettings = {
   tocLastChecked: null,
 };

@@ -58,21 +58,7 @@ async function main() {
       })
     ]
   })).watch();
-
-  const onboardingJob = (await esbuild.context({
-    ...commonConfig,
-    entryPoints: ['./src/onboarding/onboarding.ts'],
-    outbase: './src/onboarding',
-    outdir: './dist',
-    mainFields: ['svelte', 'module', 'main', 'browser'],
-    plugins: [
-      sveltePlugin({
-        preprocess: sveltePreprocess()
-      })
-    ]
-  })).watch();
   
-
-  await Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob, onboardingJob]);
+  await Promise.all([contentJob, cssJob, backgroundJob, popupJob, settingsJob]);
   console.log('⚡ Watching...');
 }
