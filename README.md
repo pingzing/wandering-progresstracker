@@ -18,5 +18,6 @@ cd Extension
 npm install
 npm run build:firefox
 
-# output will be in /dist.
+# The bundled extension will be in /Extension as packaged-extension.zip, and the source code
+# in extension-source.zip.
 ```
