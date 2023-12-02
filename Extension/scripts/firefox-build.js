@@ -14,14 +14,17 @@ async function main() {
     await fs.rm(tmpDir, { recursive: true });
   }
   await fs.mkdir(tmpDir);
-  await fs.move('node_modules', `${tmpDir}/node_modules`);
-  await fs.move('packaged-extension.zip', `${tmpDir}/packaged-extension.zip`);
+  await fs.copy('.', '../tmp', {
+    filter: (src, dest) => {
+      if (src.startsWith(`node_modules`) || src.endsWith(`packaged-extension.zip`)) {
+        return false;
+      } else {
+        return true;
+      }
+    }
+  });
 
-  zipper.sync.zip('.').compress().save('extension-source.zip');
-
-  // Move project files back
-  await fs.move(`${tmpDir}/node_modules`, 'node_modules');
-  await fs.move(`${tmpDir}/packaged-extension.zip`, 'packaged-extension.zip');
+  zipper.sync.zip('../tmp').compress().save('extension-source.zip');  
 
   console.log('Built for Firefox');
 }

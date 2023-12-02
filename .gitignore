@@ -7,3 +7,6 @@ Extension/dist
 
 # build artifacts
 Extension/web-ext-artifacts/**
+Extension/packaged-extension.zip
+Extension/extension-source.zip
+tmp/**
