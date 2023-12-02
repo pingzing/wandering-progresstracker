@@ -14,7 +14,6 @@ Built on Windows 10 22H2 (but should work on any system).
 ### Instructions
 
 ```bash
-cd Extension
 npm install
 npm run build:firefox
 
