@@ -17,8 +17,8 @@ async function main() {
   await fs.copy('.', '../tmp', {
     filter: (src, dest) => {
       if (src.startsWith(`node_modules`) 
-        || src.endsWith(`packaged-extension.zip` 
-        || src.endsWith(`extension-source.zip`))) {
+        || src.endsWith(`packaged-extension.zip`)
+        || src.endsWith(`extension-source.zip`)) {
         return false;
       } else {
         return true;
