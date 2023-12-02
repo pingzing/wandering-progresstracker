@@ -24,6 +24,7 @@
     "prettier-plugin-svelte": "^2.10.1",
     "svelte-preprocess": "^5.0.4",
     "typescript": "^5.1.6",
+    "web-ext": "^7.8.0",
     "zip-local": "^0.3.5"
   },
   "prettier": {
