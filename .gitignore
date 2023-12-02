@@ -5,8 +5,5 @@
 **/node_modules
 Extension/dist
 
-# safari
-**/xcdebugger
-Shared\ (Extension)/Resources/dist/
-**/xcuserdata
-**/*.xcuserstate
+# build artifacts
+Extension/web-ext-artifacts/**
