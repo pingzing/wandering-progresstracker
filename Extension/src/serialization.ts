@@ -1,36 +1,71 @@
 import type { StoryUrl, UserChapterInfo } from "./models";
+import { ChapterStateKey, FullStateKey } from "./consts";
 
-export function mapToString<K, V>(map: Map<K, V>): string {
+export type ChapterString = string;
+export function mapToString<K, V>(map: Map<K, V>): ChapterString {
     return JSON.stringify(Array.from(map.entries()));
 }
 
-export function stringToMap<K, V>(jsonText: string): Map<K, V> {
+export function stringToMap<K, V>(jsonText: ChapterString): Map<K, V> {
     return new Map(JSON.parse(jsonText));
 }
 
-export function serializeAllToUrl(mapString: string): URL {
+export function serializeAllToUrl(mapString: ChapterString): URL {
     const map = stringToMap<StoryUrl, UserChapterInfo>(mapString);
     const completions: number[] = [];
     for (const entry of map) {
         completions.push(entry[1].paragraphIndex ?? 0);
     }
     const completionString = completions.join(`.`);
-    const chapterUrl = window.location.origin + window.location.pathname;
-    const url = new URL(chapterUrl);
+    const currentUrl = window.location.origin + window.location.pathname;
+    const url = new URL(currentUrl);
     url.searchParams.append("wpt", completionString);
     return url;
 }
 
-export function serializeChapterToUrl(mapString: string): URL | null {
-    const map = stringToMap<StoryUrl, UserChapterInfo>(mapString);
-    const chapterUrl = window.location.origin + window.location.pathname;
+export type ParagraphIndices = number[];
+export function deserializeAllFromUrl(chapterUrl: URL): ParagraphIndices | null {
+    const indicesString = chapterUrl.searchParams.get(FullStateKey);
+    if (!indicesString) {
+        console.log(`Unable to find 'wpt' query param in URL.`)
+        return null;
+    }
+
+    try {
+        const paragraphIndices: ParagraphIndices = indicesString.split(`.`).map(x => parseInt(x, 10));
+        return paragraphIndices
+    }
+    catch (e) {
+        console.log(`Failed to parse paragraph indices out of query string.`);
+        return null;
+    }
+}
+
+export function serializeChapterToUrl(mapString: string, chapterUrl: string): URL | null {
+    const map = stringToMap<StoryUrl, UserChapterInfo>(mapString);    
     const chapterData = map.get(chapterUrl);
     if (!chapterData) {
         console.log(`No chapter data found for ${chapterUrl}. Can't serialize.`);
         return null;
-    }
+    }    
     const dataString = JSON.stringify(chapterData);
     const url = new URL(chapterUrl);
     url.searchParams.append(`wptc`, dataString);
     return url;
+}
+
+export function deserializeChapterFromUrl(chapterUrl: URL): UserChapterInfo | null {
+    const payload = chapterUrl.searchParams.get(ChapterStateKey)
+    if (!payload) {
+        console.log(`Unable to find 'wptc' query param in chapter URL.`);
+        return null;
+    }
+    try {
+        const chapterData: UserChapterInfo = JSON.parse(payload);
+        return chapterData;
+    }
+    catch (e) {
+        console.log(`Unable to parse UserChapterInfo object from 'wptc' query param.`);
+        return null;
+    }
 }

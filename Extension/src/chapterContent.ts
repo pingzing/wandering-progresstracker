@@ -9,13 +9,16 @@ export class ChapterContent {
     private url: string; // all extra params stripped off
     private previousScrollY: number = 0;
     private bookmarkY: number = 0; // Relative to the <article> tag, *not* the first paragraph.
+    private isOptionsVisible: boolean = false;
+    private selectedParagraph: HTMLElement | null = null;
 
     private articleTag: HTMLElement | null = null;
-    private contentDiv: Element | null = null;
+    private contentDiv: HTMLElement | null = null;
     private contentParagraphs: HTMLParagraphElement[] | null = null;
     private firstParagraph: HTMLParagraphElement | null = null;
     private lastParagraph: HTMLParagraphElement | null = null;
     private bookmarkDiv: HTMLDivElement | null = null;
+    private wptMenuButton: HTMLButtonElement | null = null;
 
     constructor(chapters: Map<StoryUrl, UserChapterInfo>, url: string) {
         this.chapters = chapters;
@@ -42,12 +45,14 @@ export class ChapterContent {
             return;
         }
 
-        this.contentDiv = contentDivResult[0];
+        this.contentDiv = contentDivResult[0] as HTMLElement;
         const contentParagraphsResult = this.contentDiv.getElementsByTagName('p');
         if (contentParagraphsResult.length === 0) {
             console.log(`Unable to find any paragraphs in content. Bailing...`)
             return;
         }
+
+        this.addClickListeners(this.contentDiv);
 
         // Inject extension control button onto chapter
         this.injectWptButton(this.articleTag);
@@ -111,6 +116,36 @@ export class ChapterContent {
         //    (with range, so scrolling *beyond* the end of the actual content won't count as finishing)
     }
 
+    private prevClickX = 0;
+    private prevClickY = 0;
+    private addClickListeners(contentDiv: HTMLElement) {
+        contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
+            console.log(`got mousedown`);
+            if (!(evt.target instanceof Element)) {
+                return;
+            }
+            if (evt.target.tagName !== 'P') {
+                return;
+            }
+            this.prevClickX = evt.clientX;
+            this.prevClickY = evt.clientY;
+        });
+        contentDiv.addEventListener('click', (evt: MouseEvent) => {
+            if (!(evt.target instanceof HTMLElement)) {
+                return;
+            }
+            if (Math.abs(evt.clientX - this.prevClickX) > 5 || Math.abs(evt.clientY - this.prevClickY) > 5) {
+                return;
+            }
+
+            if (this.isOptionsVisible && this.selectedParagraph == evt.target) {
+                this.hideOptions();
+            } else {
+                this.showOptions(evt.target);
+            }
+        });
+    }
+
     private updateBookmarkAndCompletion(yCoord: number) {
         if (!this.firstParagraph ||
             !this.lastParagraph ||
@@ -159,8 +194,25 @@ export class ChapterContent {
         }
     }
 
+    private showOptions(element: HTMLElement): void {
+        this.isOptionsVisible = true;
+        this.selectedParagraph = element;
+
+        if (this.wptMenuButton) {
+            this.wptMenuButton.style.display = `inline-block`;
+        }
+    }
+
+    private hideOptions(): void {
+        this.isOptionsVisible = false;
+        if (this.wptMenuButton) {
+            this.wptMenuButton.style.display = `none`;
+        }
+    }
+
     private injectWptButton(articleTag: HTMLElement): void {
-        // Remove overflow: hidden from <main> tag, as its an ancestor of the WPT button, and will prevent sticky from working
+        // Remove overflow: hidden from <main> tag, as its an ancestor of the WPT button,
+        // and will prevent sticky from working
         const mainTagResponse = document.getElementsByTagName('main');
         if (mainTagResponse.length === 0) {
             console.log(`Unable to find <main> tag in chapter. Will not attempt to disable its overflow: hidden rule.`);
@@ -169,25 +221,26 @@ export class ChapterContent {
             mainTag.style.overflow = 'visible';
         }
 
-        // TODO: Make button pop up menu that allows you to do other stuff
-        const wptMenuButton = document.createElement('button');
-        wptMenuButton.type = 'button';
-        wptMenuButton.textContent = "WPT Menu";
-        wptMenuButton.style.position = `sticky`;
-        wptMenuButton.style.bottom = `0`;
-        wptMenuButton.style.width = `100%`;
-        wptMenuButton.onclick = (ev) => {
+        // TODO: Rework this into options panel a-la Fimfic
+        this.wptMenuButton = document.createElement('button');
+        this.wptMenuButton.type = 'button';
+        this.wptMenuButton.textContent = "WPT Menu";
+        this.wptMenuButton.style.position = `sticky`;
+        this.wptMenuButton.style.bottom = `0`;
+        this.wptMenuButton.style.width = `100%`;
+        this.wptMenuButton.onclick = (ev) => {
             browser.runtime.sendMessage(<BrowserMessage>{
                 type: 'getChapters',
             }).then((chapterString: string) => {
-                const url = serializeChapterToUrl(chapterString);
+                const chapterUrl = window.location.origin + window.location.pathname;
+                const url = serializeChapterToUrl(chapterString, chapterUrl);
                 history.replaceState(``, ``, url);
             });
         };
         // a <br> so the menu button isn't all up on the nav buttons
         articleTag.appendChild(document.createElement('br'));
-        articleTag.appendChild(wptMenuButton);
-    }
+        articleTag.appendChild(this.wptMenuButton);
+    }    
 
     private paragraphBinarySearch(array: HTMLParagraphElement[], startingYCoord: number): HTMLParagraphElement {
         let front = 0;

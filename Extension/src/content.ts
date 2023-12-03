@@ -4,7 +4,6 @@ import * as tocService from './tocService'
 import * as serialization from './serialization';
 import { serializeAllToUrl, serializeChapterToUrl } from './serialization';
 import { ChapterContent } from './chapterContent';
-import { ChapterStateKey, FullStateKey } from './consts';
 
 setupMessageHandlers();
 if (document.readyState === 'loading') {
@@ -41,10 +40,8 @@ async function onLoaded(): Promise<void> {
   const currentUrl = new URL(window.location.href);
 
   // TODO: Move these checks out into functions or their own class.
-  if (currentUrl.searchParams.has(FullStateKey)) {
-    const fullState = currentUrl.searchParams.get(FullStateKey)!;
-    const paragraphIndices: number[] = fullState.split('.').map(x => parseInt(x, 10));
-
+  const paragraphIndices = serialization.deserializeAllFromUrl(currentUrl);
+  if (paragraphIndices) {
     // probably over-cautious, because we generally create the Map in chapter order, but JUST IN CASE
     // sort it to ensure it matches the order of the received paragraph indices
     const sortedChapters = Array.from(chapters).sort((a, b) => a[1].chapterIndex - b[1].chapterIndex);
@@ -63,12 +60,12 @@ async function onLoaded(): Promise<void> {
       chapters = serialization.stringToMap(response);
     }
   }
-  if (currentUrl.searchParams.has(ChapterStateKey)) {
-    const payload = currentUrl.searchParams.get(ChapterStateKey)!;
+
+  const queryChapterInfo = serialization.deserializeChapterFromUrl(currentUrl);
+  if (queryChapterInfo) {
     try {
-      const chapterInfo: UserChapterInfo = JSON.parse(payload);
       const updatedSingleChapterMap = new Map();
-      updatedSingleChapterMap.set(urlNoParams, chapterInfo);
+      updatedSingleChapterMap.set(urlNoParams, queryChapterInfo);
       const response = await browser.runtime.sendMessage(<BrowserMessage>{
         type: 'updateChapters',
         value: serialization.mapToString(updatedSingleChapterMap)
@@ -122,7 +119,8 @@ function setupMessageHandlers(): void {
         browser.runtime.sendMessage(<BrowserMessage>{
           type: 'getChapters',
         }).then((chapterString: string) => {
-          const url = serializeChapterToUrl(chapterString);
+          const chapterUrl = window.location.origin + window.location.pathname;
+          const url = serializeChapterToUrl(chapterString, chapterUrl);
           history.pushState("", "", url); // TODO: replaceState instead?
         });
         break;
