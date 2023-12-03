@@ -1,15 +1,63 @@
 .bookmark {
-    background-color: #b95050;
-    color: #FFF;
-    font-size: 0.85em;
-    border: 1px solid rgba(0,0,0,0.15);
+  background-color: #b95050;
+  color: #fff;
+  font-size: 0.85em;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  position: absolute;
+  text-shadow: -1px -1px rgba(0, 0, 0, 0.1);
+  font-family: Arial, Sans-serif;
+  height: 4px;
+  left: 0;
+  right: 0;
+  border-left: none;
+  border-right: none;
+  transition: top 0.2s;
+}
+
+.paragraph-highlight {
+  top: 0px;
+  transition: top 0.2s, height 0.2s, transform 0.2s;
+  display: none;
+  position: absolute;
+  cursor: pointer;
+  pointer-events: none;
+  left: 0;
+  right: 0;
+  border-left: none;
+  border-right: none;
+  &.visible {
+    display: block;
+  }
+  .toolbar {
+    display: inline-block;
     position: absolute;
-    text-shadow: -1px -1px rgba(0,0,0,0.1);
-    font-family: Arial, Sans-serif;
-    height: 4px;
-    left: 0;
-    right: 0;
-    border-left: none;
-    border-right: none;
-    transition: top 0.2s;
+    top: -46px;
+    right: 2rem;
+    pointer-events: all;
+    :is(button) {
+      background-color: #333;
+      color: #dadada;
+      font-family: OpenSans, sans-serif;
+      font-size: .875rem;
+      padding: 0.5rem;
+      border: 1px solid #141414;
+      border-radius: 5px;
+      margin: 1px;
+      outline: none;
+      cursor: pointer;
+      &:active {
+        background-color: #333;
+        border-color: #141414;
+        outline: none;
+      }
+      &:hover {
+        background-color: #383838;
+        border-color: #161616;
+      }
+      &:active:hover {
+        background-color: #333;
+        border-color: #141414;        
+      }
+    }
+  }
 }

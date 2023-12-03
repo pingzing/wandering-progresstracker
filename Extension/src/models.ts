@@ -3,9 +3,7 @@ export type BrowserMessageType =
   'gotColorScheme' |
   'getChapters' |
   'addNewChapters' |
-  'updateChapters' |
-  'serializeAllToUrl' |
-  'serializeChapterToUrl';
+  'updateChapters';
 
 export type BrowserMessage = {
   type: BrowserMessageType;

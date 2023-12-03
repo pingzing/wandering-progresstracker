@@ -4,13 +4,14 @@ import { mapToString, serializeAllToUrl, serializeChapterToUrl } from "./seriali
 import { debounce } from "./timing";
 
 export class ChapterContent {
+    private static readonly bookmarkButtonId = `toolbarBookmarkButton`;
+
     private chapters: Map<StoryUrl, UserChapterInfo>;
     private currentChapter: UserChapterInfo;
     private url: string; // all extra params stripped off
     private previousScrollY: number = 0;
     private bookmarkY: number = 0; // Relative to the <article> tag, *not* the first paragraph.
-    private isOptionsVisible: boolean = false;
-    private selectedParagraph: HTMLElement | null = null;
+    private isHighlightvisible: boolean = false;
 
     private articleTag: HTMLElement | null = null;
     private contentDiv: HTMLElement | null = null;
@@ -18,7 +19,10 @@ export class ChapterContent {
     private firstParagraph: HTMLParagraphElement | null = null;
     private lastParagraph: HTMLParagraphElement | null = null;
     private bookmarkDiv: HTMLDivElement | null = null;
-    private wptMenuButton: HTMLButtonElement | null = null;
+    private selectedParagraph: HTMLParagraphElement | null = null;
+    private bookmarkedParagraph: HTMLParagraphElement | null = null;
+    private paragraphHighlight: HTMLDivElement | null = null;
+    private paragraphToolbar: HTMLDivElement | null = null;
 
     constructor(chapters: Map<StoryUrl, UserChapterInfo>, url: string) {
         this.chapters = chapters;
@@ -52,10 +56,10 @@ export class ChapterContent {
             return;
         }
 
-        this.addClickListeners(this.contentDiv);
+        this.addParagraphClickListeners(this.contentDiv);
 
         // Inject extension control button onto chapter
-        this.injectWptButton(this.articleTag);
+        this.injectParagraphHighlight(this.articleTag);
 
         // ---Initial bookmark setup---
 
@@ -72,6 +76,7 @@ export class ChapterContent {
         const firstParagraphTop = this.getAbsoluteY(this.firstParagraph);
         const articleTop = this.getAbsoluteY(this.articleTag);
         this.bookmarkDiv.style.top = `${Math.floor(firstParagraphTop - articleTop)}px`;
+        this.bookmarkedParagraph = this.firstParagraph;
         // ---
 
         if (this.currentChapter.paragraphIndex) {
@@ -80,6 +85,7 @@ export class ChapterContent {
             this.bookmarkDiv.style.marginTop = '-4px';
             this.bookmarkDiv.style.top = `${Math.floor(paragraphTop - articleTop)}px`;
             this.bookmarkY = Math.floor(paragraphTop - articleTop);
+            this.bookmarkedParagraph = paragraph;
 
             // TODO: Make this a setting instead of unconditional
             this.hideBackgrounds();
@@ -97,28 +103,30 @@ export class ChapterContent {
                 return;
             };
             this.previousScrollY = newY;
-            this.updateBookmarkAndCompletion(newY);
+            this.setBookmarkToFirstParagraphInViewport(newY);
         });
         addEventListener('scroll', handleScroll);
 
+        // TODO: Add a listener to zoom or font size changed, too
         const handleResize = debounce(1000, (resizeEvent: any) => {
-            this.updateBookmarkAndCompletion(window.scrollY);
+            this.setBookmarkToFirstParagraphInViewport(window.scrollY);
+            this.updateHighlight();
         });
         addEventListener('resize', handleResize);
 
         // TODO: HTML replacement should include
         // - Content scrollbar at the top of the screen
         // - Bookmark red line thingy (DONE)
-        // - onclick handler for all <p> elements
-        // - floating box for <p> handler that allows bookmarking
+        // - onclick handler for all <p> elements (DONE)
+        // - floating box for <p> handler that allows bookmarking (DONE)
         // - onscroll handler that tracks further-scrolled position on page  (DONE)
-        //    (with throttle so a brief jaunt to the bottom doesn't count)
-        //    (with range, so scrolling *beyond* the end of the actual content won't count as finishing)
+        //    (with throttle so a brief jaunt to the bottom doesn't count) (DONE)
+        //    (with range, so scrolling *beyond* the end of the actual content won't count as finishing) (DONE)
     }
 
     private prevClickX = 0;
     private prevClickY = 0;
-    private addClickListeners(contentDiv: HTMLElement) {
+    private addParagraphClickListeners(contentDiv: HTMLElement) {
         contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
             console.log(`got mousedown`);
             if (!(evt.target instanceof Element)) {
@@ -131,22 +139,164 @@ export class ChapterContent {
             this.prevClickY = evt.clientY;
         });
         contentDiv.addEventListener('click', (evt: MouseEvent) => {
-            if (!(evt.target instanceof HTMLElement)) {
+            if (!(evt.target instanceof HTMLParagraphElement)) {
                 return;
             }
             if (Math.abs(evt.clientX - this.prevClickX) > 5 || Math.abs(evt.clientY - this.prevClickY) > 5) {
                 return;
             }
 
-            if (this.isOptionsVisible && this.selectedParagraph == evt.target) {
-                this.hideOptions();
+            if (this.isHighlightvisible && this.selectedParagraph == evt.target) {
+                this.hideHighlight();
             } else {
-                this.showOptions(evt.target);
+                this.showHighlight(evt.target);
             }
+            if (evt.target instanceof HTMLParagraphElement) {
+                this.selectedParagraph = evt.target;
+            }
+            this.updateHighlight();
         });
     }
 
-    private updateBookmarkAndCompletion(yCoord: number) {
+    private injectParagraphHighlight(articleTag: HTMLElement): void {
+        // First, the wrapper element that highlights paragraphs
+        this.paragraphHighlight = document.createElement('div');
+        this.paragraphHighlight.classList.add(`paragraph-highlight`);
+
+        // Getting color in code because there's no way to work with CSS variables' alpha in pure CSS
+        const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary');
+        // --accent-primary is hex, so let's RGB-ify it so we can mess with its alpha
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(accentColor)!;
+        const rgb = { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) };
+        const rgbString = `${rgb.r}, ${rgb.g}, ${rgb.b}`;
+        this.paragraphHighlight.style.backgroundColor = `rgb(${rgbString}, 0.15)`;
+        this.paragraphHighlight.style.borderTop = `1px solid rgb(${rgbString}, 0.25)`;
+        this.paragraphHighlight.style.borderBottom = `1px solid rgb(${rgbString}, 0.25)`;
+
+        this.paragraphHighlight.addEventListener('click', (evt) => {
+            if (evt.target === this.paragraphHighlight) { this.hideHighlight(); }
+        });
+
+        // Then, the button toolbar that sits above it
+        this.paragraphToolbar = document.createElement('div');
+        this.paragraphToolbar.classList.add(`toolbar`);
+        // four buttons: bookmark/unbookmark, chapter to URL, all to URL, close button
+        const bookmarkButton = document.createElement('button');
+        bookmarkButton.id = ChapterContent.bookmarkButtonId;
+        bookmarkButton.type = 'button';
+        bookmarkButton.textContent = "Bookmark";
+        bookmarkButton.addEventListener('click', (_) => {
+            if (!this.selectedParagraph) {
+                return;
+            }
+            if (this.bookmarkedParagraph && this.selectedParagraph === this.bookmarkedParagraph) {
+                // Unbookmark
+                if (this.firstParagraph) {
+                    this.setBookmarkAndCompletion(this.firstParagraph, window.scrollY);
+                }
+            } else {
+                this.setBookmarkAndCompletion(this.selectedParagraph, window.scrollY);
+                this.updateHighlight();
+            }
+        });
+        this.paragraphToolbar.appendChild(bookmarkButton);
+
+        const chapterToUrlButton = document.createElement('button');
+        chapterToUrlButton.type = 'button';
+        chapterToUrlButton.textContent = "Save Chapter";
+        chapterToUrlButton.addEventListener(`click`, (_) => {
+            if (!this.selectedParagraph) {
+                return;
+            }
+            const chapterUrl = window.location.origin + window.location.pathname;
+            const serializedUrl = serializeChapterToUrl(chapterUrl, this.currentChapter);
+            history.pushState(``, ``, serializedUrl);
+        });
+        this.paragraphToolbar.appendChild(chapterToUrlButton);
+
+        const allToUrlButton = document.createElement('button');
+        allToUrlButton.type = 'button';
+        allToUrlButton.textContent = 'Save All Chapters';
+        allToUrlButton.addEventListener(`click`, (_) => {
+            browser.runtime.sendMessage(<BrowserMessage>{
+                type: `getChapters`,
+            }).then((chapterString) => {
+                const chapterUrl = window.location.origin + window.location.pathname;
+                const url = serializeAllToUrl(chapterUrl, chapterString);
+                history.replaceState(``, ``, url);
+            })
+        });
+        this.paragraphToolbar.appendChild(allToUrlButton);
+
+        const closeButton = document.createElement(`button`);
+        closeButton.type = `button`;
+        closeButton.textContent = `\u2716`; // ✖
+        closeButton.addEventListener(`click`, (_) => {
+            this.hideHighlight();
+        });
+        this.paragraphToolbar.appendChild(closeButton);
+
+        this.paragraphHighlight.appendChild(this.paragraphToolbar)
+
+        articleTag.prepend(this.paragraphHighlight);
+    }
+
+    private updateHighlight() {
+        if (!this.selectedParagraph
+            || !this.paragraphHighlight
+            || !this.articleTag) {
+            return;
+        }
+
+        if (!this.isHighlightvisible) {
+            this.hideHighlight();
+        }
+
+        // Height and position
+        const articleTop = this.getAbsoluteY(this.articleTag);
+        const paragraphY = this.getAbsoluteY(this.selectedParagraph) - articleTop;
+        this.paragraphHighlight.style.transform = `translate(0px, ${Math.round(paragraphY)}px)`;
+        this.paragraphHighlight.style.height = `${Math.round(this.selectedParagraph.offsetHeight)}px`;
+
+        // Bookmark button text
+        const bookmarkButton = document.getElementById(ChapterContent.bookmarkButtonId);
+        if (bookmarkButton) {
+            bookmarkButton.innerText = this.selectedParagraph === this.bookmarkedParagraph ? `Unbookmark` : `Bookmark`;
+        }
+    }
+
+    private showHighlight(element: HTMLParagraphElement): void {
+        this.isHighlightvisible = true;
+        this.selectedParagraph = element;
+
+        if (this.paragraphHighlight) {
+            this.paragraphHighlight.classList.add('visible');
+        }
+    }
+
+    private hideHighlight(): void {
+        this.isHighlightvisible = false;
+        if (this.paragraphHighlight) {
+            this.paragraphHighlight.classList.remove('visible');
+        }
+    }
+
+    private hideBackgrounds() {
+        // parallax perf really sucks in Firefox, especailly on mobile, so hide them
+        // we'll make this a user-configurable setting later
+        const parallaxLayers = document.getElementsByClassName('winter-parallax-layer');
+        for (let i = 0; i < parallaxLayers.length; i++) {
+            const layer = parallaxLayers[i] as HTMLElement;
+            layer.style.display = `none`;
+        }
+    }
+
+    /**
+     * Called on scroll. Automatically update the bookmark's position by detemrining
+     * what the topmost-visible paragraph is.
+     * @param yCoord The current y-coordinate of window.
+     */
+    private setBookmarkToFirstParagraphInViewport(yCoord: number): void {
         if (!this.firstParagraph ||
             !this.lastParagraph ||
             !this.articleTag ||
@@ -164,83 +314,48 @@ export class ChapterContent {
         if (this.bookmarkY + this.getAbsoluteY(this.articleTag, yCoord) <= yCoord) {
             // find the closest paragraph that's beeen scrolled up off the screen, set our bookmark there
             const nearestAboveParagraph = this.paragraphBinarySearch(this.contentParagraphs, yCoord);
-            const nearestParagraphTop = this.getAbsoluteY(nearestAboveParagraph, yCoord);
-            const articleTop = this.getAbsoluteY(this.articleTag, yCoord);
-            this.bookmarkY = Math.floor(nearestParagraphTop - articleTop);
-            this.bookmarkDiv.style.top = `${this.bookmarkY}px`;
-
-            // Chapter completion
-            const lastParagraphTop = this.getAbsoluteY(this.lastParagraph, yCoord);
-            const percentCompletion = nearestParagraphTop / lastParagraphTop;
-
-            this.currentChapter.paragraphIndex = this.contentParagraphs.indexOf(nearestAboveParagraph);
-            this.currentChapter.percentCompletion = percentCompletion;
-
-            const updateChapterPayload = mapToString(new Map<StoryUrl, UserChapterInfo>([[this.url, this.currentChapter]]));
-            browser.runtime.sendMessage(<BrowserMessage>{
-                type: 'updateChapters',
-                value: updateChapterPayload
-            });
+            this.setBookmarkAndCompletion(nearestAboveParagraph, yCoord);
         }
     }
 
-    private hideBackgrounds() {
-        // parallax perf really sucks in Firefox, especailly on mobile, so hide them
-        // we'll make this a user-configurable setting later
-        const parallaxLayers = document.getElementsByClassName('winter-parallax-layer');
-        for (let i = 0; i < parallaxLayers.length; i++) {
-            const layer = parallaxLayers[i] as HTMLElement;
-            layer.style.display = `none`;
+    /**
+     * Moves the bookmark to the specified paragraph, and sets completion to the bookmark position.
+     * @param paragraph Paragraph to move the bookmark atop.
+     * @param yCoord The current y-coordinate of window.
+     */
+    private setBookmarkAndCompletion(paragraph: HTMLParagraphElement, yCoord: number): void {
+        if (!this.articleTag
+            || !this.bookmarkDiv
+            || !this.contentParagraphs
+            || !this.lastParagraph) {
+            return;
         }
+
+        this.bookmarkedParagraph = paragraph;
+
+        // Moving the bookmark
+        const nearestParagraphTop = this.getAbsoluteY(paragraph, yCoord);
+        const articleTop = this.getAbsoluteY(this.articleTag, yCoord);
+        this.bookmarkY = Math.floor(nearestParagraphTop - articleTop);
+        this.bookmarkDiv.style.top = `${this.bookmarkY}px`;
+
+
+        // Chapter completion
+        const lastParagraphTop = this.getAbsoluteY(this.lastParagraph, yCoord);
+        const percentCompletion = nearestParagraphTop / lastParagraphTop;
+
+        this.currentChapter.paragraphIndex = this.contentParagraphs.indexOf(paragraph);
+        this.currentChapter.percentCompletion = percentCompletion;
+        if (paragraph === this.lastParagraph) {
+            this.currentChapter.completed = true;
+        }
+
+        const updateChapterPayload = mapToString(new Map<StoryUrl, UserChapterInfo>([[this.url, this.currentChapter]]));
+        browser.runtime.sendMessage(<BrowserMessage>{
+            type: 'updateChapters',
+            value: updateChapterPayload
+        });
     }
-
-    private showOptions(element: HTMLElement): void {
-        this.isOptionsVisible = true;
-        this.selectedParagraph = element;
-
-        if (this.wptMenuButton) {
-            this.wptMenuButton.style.display = `inline-block`;
-        }
-    }
-
-    private hideOptions(): void {
-        this.isOptionsVisible = false;
-        if (this.wptMenuButton) {
-            this.wptMenuButton.style.display = `none`;
-        }
-    }
-
-    private injectWptButton(articleTag: HTMLElement): void {
-        // Remove overflow: hidden from <main> tag, as its an ancestor of the WPT button,
-        // and will prevent sticky from working
-        const mainTagResponse = document.getElementsByTagName('main');
-        if (mainTagResponse.length === 0) {
-            console.log(`Unable to find <main> tag in chapter. Will not attempt to disable its overflow: hidden rule.`);
-        } else {
-            const mainTag = mainTagResponse[0];
-            mainTag.style.overflow = 'visible';
-        }
-
-        // TODO: Rework this into options panel a-la Fimfic
-        this.wptMenuButton = document.createElement('button');
-        this.wptMenuButton.type = 'button';
-        this.wptMenuButton.textContent = "WPT Menu";
-        this.wptMenuButton.style.position = `sticky`;
-        this.wptMenuButton.style.bottom = `0`;
-        this.wptMenuButton.style.width = `100%`;
-        this.wptMenuButton.onclick = (ev) => {
-            browser.runtime.sendMessage(<BrowserMessage>{
-                type: 'getChapters',
-            }).then((chapterString: string) => {
-                const chapterUrl = window.location.origin + window.location.pathname;
-                const url = serializeChapterToUrl(chapterString, chapterUrl);
-                history.replaceState(``, ``, url);
-            });
-        };
-        // a <br> so the menu button isn't all up on the nav buttons
-        articleTag.appendChild(document.createElement('br'));
-        articleTag.appendChild(this.wptMenuButton);
-    }    
 
     private paragraphBinarySearch(array: HTMLParagraphElement[], startingYCoord: number): HTMLParagraphElement {
         let front = 0;

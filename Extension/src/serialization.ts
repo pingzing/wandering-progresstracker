@@ -10,14 +10,13 @@ export function stringToMap<K, V>(jsonText: ChapterString): Map<K, V> {
     return new Map(JSON.parse(jsonText));
 }
 
-export function serializeAllToUrl(mapString: ChapterString): URL {
+export function serializeAllToUrl(currentUrl: string, mapString: ChapterString): URL {
     const map = stringToMap<StoryUrl, UserChapterInfo>(mapString);
     const completions: number[] = [];
     for (const entry of map) {
         completions.push(entry[1].paragraphIndex ?? 0);
     }
     const completionString = completions.join(`.`);
-    const currentUrl = window.location.origin + window.location.pathname;
     const url = new URL(currentUrl);
     url.searchParams.append("wpt", completionString);
     return url;
@@ -41,13 +40,7 @@ export function deserializeAllFromUrl(chapterUrl: URL): ParagraphIndices | null 
     }
 }
 
-export function serializeChapterToUrl(mapString: string, chapterUrl: string): URL | null {
-    const map = stringToMap<StoryUrl, UserChapterInfo>(mapString);    
-    const chapterData = map.get(chapterUrl);
-    if (!chapterData) {
-        console.log(`No chapter data found for ${chapterUrl}. Can't serialize.`);
-        return null;
-    }    
+export function serializeChapterToUrl(chapterUrl: string, chapterData: UserChapterInfo): URL | null {
     const dataString = JSON.stringify(chapterData);
     const url = new URL(chapterUrl);
     url.searchParams.append(`wptc`, dataString);

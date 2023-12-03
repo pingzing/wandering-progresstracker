@@ -106,25 +106,6 @@ function setupMessageHandlers(): void {
       case 'getColorScheme': {
         return Promise.resolve(getColorScheme());
       }
-      case 'serializeAllToUrl': {
-        browser.runtime.sendMessage(<BrowserMessage>{
-          type: 'getChapters',
-        }).then((chapterString: string) => {
-          const url = serializeAllToUrl(chapterString);
-          history.pushState("", "", url); // TODO: replaceState instead?
-        });
-        break;
-      }
-      case 'serializeChapterToUrl': {
-        browser.runtime.sendMessage(<BrowserMessage>{
-          type: 'getChapters',
-        }).then((chapterString: string) => {
-          const chapterUrl = window.location.origin + window.location.pathname;
-          const url = serializeChapterToUrl(chapterString, chapterUrl);
-          history.pushState("", "", url); // TODO: replaceState instead?
-        });
-        break;
-      }
     }
   });
 }
