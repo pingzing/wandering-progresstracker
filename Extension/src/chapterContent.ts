@@ -23,6 +23,10 @@ export class ChapterContent {
     private bookmarkedParagraph: HTMLParagraphElement | null = null;
     private paragraphHighlight: HTMLDivElement | null = null;
     private paragraphToolbar: HTMLDivElement | null = null;
+    private scrubberContainer: HTMLDivElement | null = null;
+    private scrubberBar: HTMLDivElement | null = null;
+    private scrubberCircleContainer: HTMLDivElement | null = null;
+    private scrubberCircle: HTMLDivElement | null = null;
 
     constructor(chapters: Map<StoryUrl, UserChapterInfo>, url: string) {
         this.chapters = chapters;
@@ -61,6 +65,9 @@ export class ChapterContent {
         // Inject extension control button onto chapter
         this.injectParagraphHighlight(this.articleTag);
 
+        // Inject chapter scrubber
+        this.injectScrubber(this.articleTag);
+
         // ---Initial bookmark setup---
 
         // offsetParent filter removes any hidden paragraphs
@@ -70,7 +77,7 @@ export class ChapterContent {
         this.lastParagraph = this.contentParagraphs[this.contentParagraphs.length - 1];
 
         this.bookmarkDiv = document.createElement("div");
-        this.bookmarkDiv.className = "bookmark";
+        this.bookmarkDiv.className = "wpt-bookmark";
         this.contentDiv.prepend(this.bookmarkDiv);
 
         const firstParagraphTop = this.getAbsoluteY(this.firstParagraph);
@@ -96,32 +103,10 @@ export class ChapterContent {
             });
         }
 
-        const handleScroll = debounce(1000, (scrollEvent: any) => {
-            const newY = window.scrollY;
-            if (newY < this.previousScrollY) {
-                this.previousScrollY = newY;
-                return;
-            };
-            this.previousScrollY = newY;
-            this.setBookmarkToFirstParagraphInViewport(newY);
-        });
-        addEventListener('scroll', handleScroll);
-
         // TODO: Add a listener to zoom or font size changed, too
-        const handleResize = debounce(1000, (resizeEvent: any) => {
-            this.setBookmarkToFirstParagraphInViewport(window.scrollY);
-            this.updateHighlight();
-        });
-        addEventListener('resize', handleResize);
-
-        // TODO: HTML replacement should include
-        // - Content scrollbar at the top of the screen
-        // - Bookmark red line thingy (DONE)
-        // - onclick handler for all <p> elements (DONE)
-        // - floating box for <p> handler that allows bookmarking (DONE)
-        // - onscroll handler that tracks further-scrolled position on page  (DONE)
-        //    (with throttle so a brief jaunt to the bottom doesn't count) (DONE)
-        //    (with range, so scrolling *beyond* the end of the actual content won't count as finishing) (DONE)
+        addEventListener('scroll', () => this.onScroll());
+        addEventListener('resize', () => this.onResize());
+        window.addEventListener('resize', () => this.updateScrubber());
     }
 
     private prevClickX = 0;
@@ -161,7 +146,7 @@ export class ChapterContent {
     private injectParagraphHighlight(articleTag: HTMLElement): void {
         // First, the wrapper element that highlights paragraphs
         this.paragraphHighlight = document.createElement('div');
-        this.paragraphHighlight.classList.add(`paragraph-highlight`);
+        this.paragraphHighlight.classList.add(`wpt-paragraph-highlight`);
 
         // Getting color in code because there's no way to work with CSS variables' alpha in pure CSS
         const accentColor = getComputedStyle(document.documentElement).getPropertyValue('--accent-primary');
@@ -179,7 +164,7 @@ export class ChapterContent {
 
         // Then, the button toolbar that sits above it
         this.paragraphToolbar = document.createElement('div');
-        this.paragraphToolbar.classList.add(`toolbar`);
+        this.paragraphToolbar.classList.add(`wpt-toolbar`);
         // four buttons: bookmark/unbookmark, chapter to URL, all to URL, close button
         const bookmarkButton = document.createElement('button');
         bookmarkButton.id = ChapterContent.bookmarkButtonId;
@@ -193,6 +178,7 @@ export class ChapterContent {
                 // Unbookmark
                 if (this.firstParagraph) {
                     this.setBookmarkAndCompletion(this.firstParagraph, window.scrollY);
+                    this.updateHighlight();
                 }
             } else {
                 this.setBookmarkAndCompletion(this.selectedParagraph, window.scrollY);
@@ -203,7 +189,7 @@ export class ChapterContent {
 
         const chapterToUrlButton = document.createElement('button');
         chapterToUrlButton.type = 'button';
-        chapterToUrlButton.textContent = "Save Chapter";
+        chapterToUrlButton.textContent = "Chapter to URL";
         chapterToUrlButton.addEventListener(`click`, (_) => {
             if (!this.selectedParagraph) {
                 return;
@@ -216,7 +202,7 @@ export class ChapterContent {
 
         const allToUrlButton = document.createElement('button');
         allToUrlButton.type = 'button';
-        allToUrlButton.textContent = 'Save All Chapters';
+        allToUrlButton.textContent = 'All to URL';
         allToUrlButton.addEventListener(`click`, (_) => {
             browser.runtime.sendMessage(<BrowserMessage>{
                 type: `getChapters`,
@@ -278,6 +264,86 @@ export class ChapterContent {
         this.isHighlightvisible = false;
         if (this.paragraphHighlight) {
             this.paragraphHighlight.classList.remove('visible');
+        }
+    }
+
+    private injectScrubber(articleTag: HTMLElement): void {
+        // Remove overflow: hidden from <main> tag, as its an ancestor of the scrubber bar button,
+        // and will prevent sticky from working
+        const mainTagResponse = document.getElementsByTagName('main');
+        if (mainTagResponse.length === 0) {
+            console.log(`Unable to find <main> tag in chapter. Skipping injecting scrubber bar.`);
+            return;
+        } else {
+            const mainTag = mainTagResponse[0];
+            mainTag.style.overflow = 'visible';
+        }
+
+        // div at the top, 4px tall horizontal bar that holds the scrubber
+        // child div, scrubber, with position: absolute and background-color. left% and right% to position and shape the bar
+        // child div of that, scrubberCircle, which is just a circle in the center of the scrubber bar. left, no right
+        this.scrubberContainer = document.createElement('div');
+        this.scrubberContainer.classList.add(`wpt-scrubber`);
+
+        this.scrubberBar = document.createElement('div');
+        this.scrubberBar.classList.add(`wpt-scrubber-bar`);
+
+        this.scrubberCircleContainer = document.createElement(`div`);
+        this.scrubberCircleContainer.classList.add(`wpt-scrubber-circle-container`);
+
+        this.scrubberCircle = document.createElement('div');
+        this.scrubberCircle.classList.add(`wpt-scrubber-circle`);
+        this.scrubberCircleContainer.appendChild(this.scrubberCircle);
+
+        this.scrubberContainer.appendChild(this.scrubberBar);
+        this.scrubberContainer.appendChild(this.scrubberCircleContainer);
+        articleTag.prepend(this.scrubberContainer);
+
+        this.updateScrubberPadding();
+        this.updateScrubber();
+    }
+
+    private updateScrubberPadding(): void {
+        if (!this.scrubberContainer || !this.articleTag) {
+            return;
+        }
+
+        // adjust paddings to overcome the article tag's padding,
+        // because it changes on resize, so we can't really do this in CSS
+        const articlePadding = getComputedStyle(this.articleTag).padding;
+        const negativePadding = `-${articlePadding}`;
+        this.scrubberContainer.style.marginLeft = negativePadding;
+        this.scrubberContainer.style.marginRight = negativePadding;
+        this.scrubberContainer.style.marginTop = negativePadding;
+    }
+
+    private updateScrubber(): void {
+        if (!this.scrubberContainer
+            || !this.scrubberBar
+            || !this.scrubberCircleContainer
+            || !this.scrubberCircle
+            || !this.articleTag
+            || !this.contentDiv) {
+            return;
+        }
+
+        const contentRect = this.contentDiv.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const completionTop = -contentRect.top / contentRect.height; // if user is between 0.0 and 1.0 they're in the content        
+        const completionBottom = (-contentRect.top + viewportHeight) / contentRect.height;
+        const completionMiddle = (completionTop + completionBottom) / 2;
+
+        const leftFraction: number = Math.min(Math.max(completionTop, 0), 1);
+        const rightFraction: number = Math.min(Math.max(completionBottom, 0), 1);
+
+        this.scrubberBar.style.left = `${100 * leftFraction}%`;
+        this.scrubberBar.style.right = `${100 - 100 * rightFraction}%`;
+
+        if (completionMiddle > 1 || completionMiddle < 0) {
+            this.scrubberCircleContainer.style.visibility = `hidden`;
+        } else {
+            this.scrubberCircleContainer.style.visibility = `visible`;
+            this.scrubberCircleContainer.style.left = `${100 * completionMiddle}%`;
         }
     }
 
@@ -391,5 +457,37 @@ export class ChapterContent {
     private getAbsoluteY(elem: Element, ySource?: number): number {
         const yOffset: number = ySource ? ySource : window.scrollY;
         return elem.getBoundingClientRect().top + yOffset;
+    }
+
+    private debouncedScroll: (<U>(this: U) => void) | null = null;
+    private onScroll(): void {
+        if (!this.debouncedScroll) {
+            this.debouncedScroll = debounce(1000, () => {
+                const newY = window.scrollY;
+                if (newY < this.previousScrollY) {
+                    this.previousScrollY = newY;
+                    return;
+                };
+                this.previousScrollY = newY;
+                this.setBookmarkToFirstParagraphInViewport(newY);
+            });
+        }
+        this.debouncedScroll();
+
+        this.updateScrubber();
+    }
+
+    private debouncedResize: (<U>(this: U) => void) | null = null;
+    private onResize(): void {
+        if (!this.debouncedResize) {
+            this.debouncedResize = debounce(1000, () => {
+                this.setBookmarkToFirstParagraphInViewport(window.scrollY);
+                this.updateHighlight();
+            });
+        }
+        this.debouncedResize();
+
+        this.updateScrubberPadding();
+        this.updateScrubber();
     }
 }

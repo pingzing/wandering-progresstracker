@@ -1,4 +1,4 @@
-.bookmark {
+.wpt-bookmark {
   background-color: #b95050;
   color: #fff;
   font-size: 0.85em;
@@ -14,7 +14,7 @@
   transition: top 0.2s;
 }
 
-.paragraph-highlight {
+.wpt-paragraph-highlight {
   top: 0px;
   transition: top 0.2s, height 0.2s, transform 0.2s;
   display: none;
@@ -28,7 +28,7 @@
   &.visible {
     display: block;
   }
-  .toolbar {
+  .wpt-toolbar {
     display: inline-block;
     position: absolute;
     top: -46px;
@@ -38,7 +38,7 @@
       background-color: #333;
       color: #dadada;
       font-family: OpenSans, sans-serif;
-      font-size: .875rem;
+      font-size: 0.875rem;
       padding: 0.5rem;
       border: 1px solid #141414;
       border-radius: 5px;
@@ -56,8 +56,38 @@
       }
       &:active:hover {
         background-color: #333;
-        border-color: #141414;        
+        border-color: #141414;
       }
     }
+  }
+}
+
+.wpt-scrubber {
+  height: 4px;
+  position: sticky;
+  top: 0;
+  /* margin-left set in code to overcome article padding */
+  /* margin-right set in code to overcome article padding */
+  background-color: var(--reader-body-background);
+  .wpt-scrubber-bar {
+    background-color: var(--accent-primary);
+    position: absolute;
+    top: 0px;
+    bottom: 0px;
+  }
+  .wpt-scrubber-circle-container {
+    width: 0;
+    height: 0;
+    position: absolute;
+    left: 0%;
+  }
+  .wpt-scrubber-circle {
+    background-color: var(--accent-primary);
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    position: absolute;
+    top: -3px;
+    left: -5px;
   }
 }
