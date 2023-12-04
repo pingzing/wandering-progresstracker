@@ -177,11 +177,13 @@ export class ChapterContent {
             if (this.bookmarkedParagraph && this.selectedParagraph === this.bookmarkedParagraph) {
                 // Unbookmark
                 if (this.firstParagraph) {
-                    this.setBookmarkAndCompletion(this.firstParagraph, window.scrollY);
+                    this.setBookmark(this.firstParagraph, window.scrollY);
+                    this.setCompletion(this.firstParagraph, window.scrollY);
                     this.updateHighlight();
                 }
             } else {
-                this.setBookmarkAndCompletion(this.selectedParagraph, window.scrollY);
+                this.setBookmark(this.selectedParagraph, window.scrollY);
+                this.setCompletion(this.selectedParagraph, window.scrollY);
                 this.updateHighlight();
             }
         });
@@ -358,7 +360,7 @@ export class ChapterContent {
     }
 
     /**
-     * Called on scroll. Automatically update the bookmark's position by detemrining
+     * Called on scroll & resize. Automatically update the bookmark's position by detemrining
      * what the topmost-visible paragraph is.
      * @param yCoord The current y-coordinate of window.
      */
@@ -380,16 +382,17 @@ export class ChapterContent {
         if (this.bookmarkY + this.getAbsoluteY(this.articleTag, yCoord) <= yCoord) {
             // find the closest paragraph that's beeen scrolled up off the screen, set our bookmark there
             const nearestAboveParagraph = this.paragraphBinarySearch(this.contentParagraphs, yCoord);
-            this.setBookmarkAndCompletion(nearestAboveParagraph, yCoord);
+            this.setBookmark(nearestAboveParagraph, yCoord);
+            this.setCompletion(nearestAboveParagraph, yCoord);
         }
     }
 
     /**
-     * Moves the bookmark to the specified paragraph, and sets completion to the bookmark position.
+     * Moves the bookmark to the specified paragraph.
      * @param paragraph Paragraph to move the bookmark atop.
      * @param yCoord The current y-coordinate of window.
      */
-    private setBookmarkAndCompletion(paragraph: HTMLParagraphElement, yCoord: number): void {
+    private setBookmark(paragraph: HTMLParagraphElement, yCoord: number): void {
         if (!this.articleTag
             || !this.bookmarkDiv
             || !this.contentParagraphs
@@ -400,15 +403,28 @@ export class ChapterContent {
         this.bookmarkedParagraph = paragraph;
 
         // Moving the bookmark
-        const nearestParagraphTop = this.getAbsoluteY(paragraph, yCoord);
+        const selectedParagraphTop = this.getAbsoluteY(paragraph, yCoord);
         const articleTop = this.getAbsoluteY(this.articleTag, yCoord);
-        this.bookmarkY = Math.floor(nearestParagraphTop - articleTop);
+        this.bookmarkY = Math.floor(selectedParagraphTop - articleTop);
         this.bookmarkDiv.style.top = `${this.bookmarkY}px`;
+    }
 
+    /**
+     * Sets completion state to the given paragraph.
+     * @param paragraph The paragraph to set our completion marker at.
+     * @param yCoord The current y-coordinate of the window.
+     */
+    private setCompletion(paragraph: HTMLParagraphElement, yCoord: number): void {
+        if (!this.lastParagraph
+            || !this.contentParagraphs) {
+            return;
+        }
+
+        const selectedParagraphTop = this.getAbsoluteY(paragraph, yCoord);
 
         // Chapter completion
         const lastParagraphTop = this.getAbsoluteY(this.lastParagraph, yCoord);
-        const percentCompletion = nearestParagraphTop / lastParagraphTop;
+        const percentCompletion = selectedParagraphTop / lastParagraphTop;
 
         this.currentChapter.paragraphIndex = this.contentParagraphs.indexOf(paragraph);
         this.currentChapter.percentCompletion = percentCompletion;
@@ -482,6 +498,9 @@ export class ChapterContent {
         if (!this.debouncedResize) {
             this.debouncedResize = debounce(1000, () => {
                 this.setBookmarkToFirstParagraphInViewport(window.scrollY);
+                if (this.selectedParagraph) {
+                    this.setBookmark(this.selectedParagraph, window.scrollY);
+                }
                 this.updateHighlight();
             });
         }
