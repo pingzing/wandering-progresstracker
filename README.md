@@ -1,1 +1,1 @@
-See [the Readme in Extension](/Extension/README.md).
+See [the Readme in Extension](/Extension).
