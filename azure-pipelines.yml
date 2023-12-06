@@ -23,14 +23,14 @@ steps:
 
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/Extension/packaged-extension.zip'
+    PathtoPublish: '$(Build.SourcesDirectory)/Extension/packaged-extension.zip'
     ArtifactName: 'packaged-extension.zip'
     publishLocation: 'Container'
   displayName: 'Publish extension'
 
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/Extension/extension-source.zip'
+    PathtoPublish: '$(Build.SourcesDirectory)/Extension/extension-source.zip'
     ArtifactName: 'extension-source.zip'
     publishLocation: 'Container'
   displayName: 'Publish zipped source'
