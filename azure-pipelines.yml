@@ -1,8 +1,3 @@
-# Node.js
-# Build a general Node.js project with npm.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
-
 trigger:
 - main
 
@@ -21,16 +16,16 @@ steps:
     npm run build:firefox
   displayName: 'Build Firefox extension'
 
-- task: PublishBuildArtifacts@1
+- task: PublishPipelineArtifact@1
   inputs:
-    PathtoPublish: '$(Build.SourcesDirectory)/Extension/packaged-extension.zip'
-    ArtifactName: 'packaged-extension.zip'
-    publishLocation: 'Container'
+    targetPath:  '$(Build.SourcesDirectory)/Extension/packaged-extension.zip'
+    artifactName: 'packaged-extension.zip'
+    publishLocation: pipeline
   displayName: 'Publish extension'
 
-- task: PublishBuildArtifacts@1
+- task: PublishPipelineArtifact@1
   inputs:
-    PathtoPublish: '$(Build.SourcesDirectory)/Extension/extension-source.zip'
-    ArtifactName: 'extension-source.zip'
-    publishLocation: 'Container'
+    targetPath: '$(Build.SourcesDirectory)/Extension/extension-source.zip'
+    artifactName: 'extension-source.zip'
+    publishLocation: pipeline
   displayName: 'Publish zipped source'
