@@ -1,0 +1,29 @@
+trigger: 
+- none
+
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task: DownloadPipelineArtifact@2
+  inputs:
+    buildType: specific
+    project: 'Wandering ProgressTracker'
+    definition: 'Build'
+    buildVersionToDownload: latest
+    artifactName: 'packaged-extension'
+    targetPath: '$(Pipeline.Workspace)'
+  displayName: 'Download extension'
+
+- task: DownloadPipelineArtifact@2
+  inputs:
+    buildType: specific
+    project: 'Wandering ProgressTracker'
+    definition: 'Build'
+    buildVersionToDownload: latest
+    artifactName: 'extension-source'
+    targetPath: '$(Pipeline.Workspace)'
+  displayName: 'Download zipped source'
+
+  # TODO: versioning, upload to FF, etc
+

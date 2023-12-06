@@ -19,13 +19,13 @@ steps:
 - task: PublishPipelineArtifact@1
   inputs:
     targetPath:  '$(Build.SourcesDirectory)/Extension/packaged-extension.zip'
-    artifactName: 'packaged-extension.zip'
+    artifactName: 'packaged-extension'
     publishLocation: pipeline
   displayName: 'Publish extension'
 
 - task: PublishPipelineArtifact@1
   inputs:
     targetPath: '$(Build.SourcesDirectory)/Extension/extension-source.zip'
-    artifactName: 'extension-source.zip'
+    artifactName: 'extension-source'
     publishLocation: pipeline
   displayName: 'Publish zipped source'
