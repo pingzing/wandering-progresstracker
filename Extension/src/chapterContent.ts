@@ -18,7 +18,6 @@ export class ChapterContent {
   private contentParagraphs: HTMLParagraphElement[] | null = null;
   private firstParagraph: HTMLParagraphElement | null = null;
   private lastParagraph: HTMLParagraphElement | null = null;
-  private bottomNextChapterButton: HTMLAnchorElement | null = null;
   private bookmarkDiv: HTMLDivElement | null = null;
   private selectedParagraph: HTMLParagraphElement | null = null;
   private bookmarkedParagraph: HTMLParagraphElement | null = null;
@@ -351,7 +350,6 @@ export class ChapterContent {
     const negativePadding = `-${articlePadding}`;
     this.scrubberContainer.style.marginLeft = negativePadding;
     this.scrubberContainer.style.marginRight = negativePadding;
-    this.scrubberContainer.style.marginTop = negativePadding;
   }
 
   private updateScrubber(): void {
@@ -453,6 +451,7 @@ export class ChapterContent {
       return;
     }
 
+    this.setBookmark(this.lastParagraph, yCoord);
     this.setCompletion(this.lastParagraph, yCoord);
   }
 
