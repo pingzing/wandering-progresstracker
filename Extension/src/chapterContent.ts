@@ -135,6 +135,7 @@ export class ChapterContent {
   private prevClickY = 0;
   private addParagraphClickListeners(contentDiv: HTMLElement) {
     contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
+      console.log(`got mousedown`);
       if (!(evt.target instanceof Element)) {
         return;
       }
