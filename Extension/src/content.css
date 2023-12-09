@@ -9,6 +9,7 @@
   height: 4px;
   left: 0;
   right: 0;
+  margin-top: -4px;
   border-left: none;
   border-right: none;
   transition: top 0.2s;
