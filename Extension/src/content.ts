@@ -1,9 +1,16 @@
 import browser from 'webextension-polyfill';
-import { type BrowserMessage, type BrowserMessageType, type ColorScheme, type StoryUrl, type UserChapterInfo } from './models';
-import * as tocService from './tocService'
+import {
+  type BrowserMessage,
+  type BrowserMessageType,
+  type ColorScheme,
+  type StoryUrl,
+  type UserChapterInfo
+} from './models';
+import * as tocService from './tocService';
 import * as serialization from './serialization';
 import { serializeAllToUrl, serializeChapterToUrl } from './serialization';
 import { ChapterContent } from './chapterContent';
+import { TocContent } from './tocContent';
 
 setupMessageHandlers();
 if (document.readyState === 'loading') {
@@ -13,9 +20,10 @@ if (document.readyState === 'loading') {
 }
 
 async function onLoaded(): Promise<void> {
-  const tocUrl = "https://wanderinginn.com/table-of-contents/";
+  const tocUrl = 'https://wanderinginn.com/table-of-contents/';
   let onToc: boolean = false;
   let chapterContent: ChapterContent; // holding onto this so it doesn't get GC'ed. Might not matter?
+  let tocContent: TocContent;
 
   // strip extra query params off URL, because we'll be using those to send around data.
   const urlNoParams = window.location.origin + window.location.pathname;
@@ -28,14 +36,15 @@ async function onLoaded(): Promise<void> {
       await browser.runtime.sendMessage(<BrowserMessage>{
         type: 'addNewChapters',
         value: serialization.mapToString(chapters)
-      })
+      });
     }
   }
 
   let chapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(
     await browser.runtime.sendMessage(<BrowserMessage>{
-      type: 'getChapters',
-    }));
+      type: 'getChapters'
+    })
+  );
 
   const currentUrl = new URL(window.location.href);
 
@@ -44,7 +53,9 @@ async function onLoaded(): Promise<void> {
   if (paragraphIndices) {
     // probably over-cautious, because we generally create the Map in chapter order, but JUST IN CASE
     // sort it to ensure it matches the order of the received paragraph indices
-    const sortedChapters = Array.from(chapters).sort((a, b) => a[1].chapterIndex - b[1].chapterIndex);
+    const sortedChapters = Array.from(chapters).sort(
+      (a, b) => a[1].chapterIndex - b[1].chapterIndex
+    );
     for (let i = 0; i < paragraphIndices.length; i++) {
       const paragraphIndex = paragraphIndices[i];
       const chapter = sortedChapters[i];
@@ -78,16 +89,9 @@ async function onLoaded(): Promise<void> {
     }
   }
 
+  // ToC injection
   if (onToc) {
-    // TODO: Bonus points: implement completion bars on the ToC so people can see how far along they are per-chapter.
-    // Progress bar implementation:
-    // - get the 'body-web table-cell' div under each 'chapter-entry' div
-    // - change each background to: 
-    //    linear-gradient(to right, green <percent-complete>%, transparent <percent complete>%, transparent)
-    // - to include a percentage completion indicator:
-    //   - each chapter-entry container gains position: relative
-    //   - we create a new div child below each with the percentage completed, and the following style:
-    //   - display: inline-block; position: absolute; top: 25%; right: 1%;
+    tocContent = new TocContent(chapters);
     console.log(`You're on the ToC!`);
     return;
   }
@@ -110,8 +114,6 @@ function setupMessageHandlers(): void {
   });
 }
 
-
-
 function getColorScheme() {
   let scheme: ColorScheme = 'light';
   const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -120,4 +122,3 @@ function getColorScheme() {
   }
   return scheme;
 }
-

@@ -92,3 +92,9 @@
     left: -5px;
   }
 }
+
+.wpt-toc-percentage {
+  display: inline-block; 
+  position: absolute;  
+  right: 1%;
+}
