@@ -33,14 +33,6 @@ class ChapterService {
   }
 
   public async getChapters(): Promise<Map<StoryUrl, UserChapterInfo>> {
-    // Problem: terminating and restarting background script results in a
-    // this.userChapters that has the correct number of entries...
-    // ...but they're all blank.
-    // Something to do with the page getting killed and recreated.
-    // Extra weird: it doesn't call the constructor on recreation??
-    // The data is still in the userDataService, in storage!
-    // but the local data is toast!
-
     // Update if...
     let shouldUpdate: boolean = false;
 
