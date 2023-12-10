@@ -66,7 +66,7 @@ class ChapterService {
       if (!parsedChapters) {
         return new Map<StoryUrl, UserChapterInfo>();
       }
-      this.addNewChapters(parsedChapters);
+      await this.addNewChapters(parsedChapters);
       userChaptersPayload = await this.getSessionChapters();
       await userDataService.setTocLastUpdated(new Date(Date.now()));
     }
