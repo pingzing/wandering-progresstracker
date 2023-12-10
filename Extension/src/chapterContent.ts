@@ -97,14 +97,12 @@ export class ChapterContent {
 
       // Don't autoscroll to the bookmark if the chapter is complete,
       // because the user has probably come back to reference something
-      if (this.currentChapter.completed) {
-        return;
+      if (!this.currentChapter.completed) {
+        paragraph.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
       }
-
-      paragraph.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
     }
 
     // TODO: Add a listener to zoom or font size changed, too
