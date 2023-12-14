@@ -16,6 +16,7 @@
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/svelte": "^5.0.0",
+    "@types/firefox-webext-browser": "^120.0.0",
     "@types/webextension-polyfill": "^0.10.0",
     "esbuild": "^0.18.11",
     "esbuild-svelte": "^0.7.4",

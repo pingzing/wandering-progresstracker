@@ -14,7 +14,10 @@
     "resolveJsonModule": true,
     "importsNotUsedAsValues": "remove",
     "jsx": "react",
-    "types": ["svelte"]
+    "types": [
+      "svelte",
+      "firefox-webext-browser"
+    ]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules/*", "dist/*"]

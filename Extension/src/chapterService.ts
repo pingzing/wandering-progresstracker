@@ -3,20 +3,11 @@ import userDataService from './userDataService';
 import * as tocService from './tocService';
 import { mapToString, stringToMap } from './serialization';
 
-// webextension-polyfill doesn't include browser.storage.session, so
-// we jump down the dynamic trap-door to allow us to try to reference it
-// note: this will 100% break on older browsers, but ¯\_(ツ)_/¯
-let browser: any;
-if (typeof (globalThis as any).browser === 'undefined') {
-  browser = (globalThis as any).chrome;
-} else {
-  browser = (globalThis as any).browser;
-}
-
+// TODO: refactor this whole damn class, having to move from in-memory things to sessionStorage has made a mess of it
 class ChapterService {
   private readonly domParser: DOMParser = new DOMParser();
   private static readonly sessionChaptersKey = `sessionChapters`;
-  private session = browser.storage.session;
+  private session: browser.storage.StorageArea = browser.storage.session;
 
   private async getSessionChapters(): Promise<string | null> {
     const resultObject = await this.session.get(ChapterService.sessionChaptersKey);
