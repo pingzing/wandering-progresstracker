@@ -25,7 +25,7 @@ class UserDataService {
             });
         }
         catch (e) {
-            console.log(`Failed to set tocLastUpdated: ${e}`);
+            wptLog(`Failed to set tocLastUpdated: ${e}`);
         }
     }
 

@@ -1,4 +1,5 @@
 import browser from 'webextension-polyfill';
+
 import {
   type BrowserMessage,
   type BrowserMessageType,
@@ -8,9 +9,9 @@ import {
 } from './shared/models';
 import * as tocService from './shared/tocService';
 import * as serialization from './shared/serialization';
-import { serializeAllToUrl, serializeChapterToUrl } from './shared/serialization';
 import { ChapterContent } from './content/chapterContent';
 import { TocContent } from './content/tocContent';
+import { wptLog } from './shared/logging';
 
 setupMessageHandlers();
 if (document.readyState === 'loading') {
@@ -85,14 +86,14 @@ async function onLoaded(): Promise<void> {
         chapters = serialization.stringToMap(response);
       }
     } catch (e) {
-      console.log(`Unable to parse UserChapterInfo object from 'wptc' query param. Skipping...`);
+      wptLog(`Unable to parse UserChapterInfo object from 'wptc' query param. Skipping...`);
     }
   }
 
   // ToC injection
   if (onToc) {
     tocContent = new TocContent(chapters);
-    console.log(`You're on the ToC!`);
+    wptLog(`You're on the ToC!`);
     return;
   }
 
@@ -105,7 +106,7 @@ async function onLoaded(): Promise<void> {
 
 function setupMessageHandlers(): void {
   browser.runtime.onMessage.addListener(message => {
-    console.log('got message', message);
+    wptLog('got message', message);
     switch (message.type as BrowserMessageType) {
       case 'getColorScheme': {
         return Promise.resolve(getColorScheme());

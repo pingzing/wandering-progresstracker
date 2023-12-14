@@ -1,5 +1,7 @@
 import browser from 'webextension-polyfill';
+
 import { type AppSettings, DEFAULT_SETTINGS } from '../shared/models';
+import { wptLog } from '../shared/logging';
 
 // Placeholder for now
 class SettingsService {
@@ -14,7 +16,7 @@ class SettingsService {
       !settings ||
       Object.keys(settings).length !== Object.keys(DEFAULT_SETTINGS).length
     ) {
-      console.log('no settings found, using default settings');
+      wptLog('no settings found, using default settings');
 
       await browser.storage.sync.set({
         [SettingsService.settingsKey]: DEFAULT_SETTINGS

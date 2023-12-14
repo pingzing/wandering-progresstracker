@@ -2,6 +2,7 @@ import type { ChapterInfo, UserChapterInfo, StoryUrl } from '../shared/models';
 import userDataService from './userDataService';
 import * as tocService from '../shared/tocService';
 import { mapToString, stringToMap } from '../shared/serialization';
+import { wptLog } from '../shared/logging';
 
 // TODO: refactor this whole damn class, having to move from in-memory things to sessionStorage has made a mess of it
 class ChapterService {
@@ -98,7 +99,6 @@ class ChapterService {
       currentSessionChapters.set(chapterUrl, {
         chapterIndex: chapterInfo.chapterIndex,
         chapterName: chapterInfo.chapterName,
-        completed: false,
         percentCompletion: 0.0,
         paragraphIndex: null
       });
@@ -112,7 +112,7 @@ class ChapterService {
   ): Promise<Map<StoryUrl, UserChapterInfo> | null> {
     const userChapterPayload = await this.getSessionChapters();
     if (!userChapterPayload) {
-      console.log(
+      wptLog(
         `Somehow this.userChapters is still not initialized. This is an error!  Oh no. Bailing.`
       );
       return null;
@@ -129,7 +129,7 @@ class ChapterService {
     try {
       await userDataService.saveChaptersToStorage(userChapterMap);
     } catch (e) {
-      console.log(`Failed to persist chapters to storage. Error: ${e}`);
+      wptLog(`Failed to persist chapters to storage. Error: ${e}`);
     }
 
     return userChapterMap;
@@ -138,7 +138,7 @@ class ChapterService {
   private async getToc(): Promise<Document | null> {
     const tocResponse = await fetch('https://wanderinginn.com/table-of-contents/');
     if (!tocResponse.ok) {
-      console.log('Failed to fetch toc.');
+      wptLog('Failed to fetch toc.');
       return null;
     }
 

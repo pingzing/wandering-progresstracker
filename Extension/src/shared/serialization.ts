@@ -26,7 +26,7 @@ export type ParagraphIndices = number[];
 export function deserializeAllFromUrl(chapterUrl: URL): ParagraphIndices | null {
     const indicesString = chapterUrl.searchParams.get(FullStateKey);
     if (!indicesString) {
-        console.log(`Unable to find 'wpt' query param in URL.`)
+        wptLog(`Unable to find 'wpt' query param in URL.`)
         return null;
     }
 
@@ -35,7 +35,7 @@ export function deserializeAllFromUrl(chapterUrl: URL): ParagraphIndices | null 
         return paragraphIndices
     }
     catch (e) {
-        console.log(`Failed to parse paragraph indices out of query string.`);
+        wptLog(`Failed to parse paragraph indices out of query string.`);
         return null;
     }
 }
@@ -50,7 +50,7 @@ export function serializeChapterToUrl(chapterUrl: string, chapterData: UserChapt
 export function deserializeChapterFromUrl(chapterUrl: URL): UserChapterInfo | null {
     const payload = chapterUrl.searchParams.get(ChapterStateKey)
     if (!payload) {
-        console.log(`Unable to find 'wptc' query param in chapter URL.`);
+        wptLog(`Unable to find 'wptc' query param in chapter URL.`);
         return null;
     }
     try {
@@ -58,7 +58,7 @@ export function deserializeChapterFromUrl(chapterUrl: URL): UserChapterInfo | nu
         return chapterData;
     }
     catch (e) {
-        console.log(`Unable to parse UserChapterInfo object from 'wptc' query param.`);
+        wptLog(`Unable to parse UserChapterInfo object from 'wptc' query param.`);
         return null;
     }
 }

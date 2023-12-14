@@ -2,6 +2,7 @@ import browser from 'webextension-polyfill';
 import type { BrowserMessage, StoryUrl, UserChapterInfo } from '../shared/models';
 import { mapToString, serializeAllToUrl, serializeChapterToUrl } from '../shared/serialization';
 import { debounce } from '../shared/timing';
+import { wptLog } from '../shared/logging';
 
 export class ChapterContent {
   private static readonly bookmarkButtonId = `toolbarBookmarkButton`;
@@ -36,12 +37,16 @@ export class ChapterContent {
     this.setup();
   }
 
+  // TODOS:
+  // - Add buttons to toolbar:
+  //    - Jump to: Top, Bottom, Bookmark
+  // - Maybe move "all to URL" into settings somewhere, instead of the per-chapter toolbar  
   private setup() {
     // We need this, because it's the closest 'position: relative' ancestor, so that's what
     // the bookmark winds up being parented to.
     const articleTagResults = document.getElementsByTagName('article');
     if (articleTagResults.length === 0) {
-      console.log(`Unable to find the article tag. Bailing...`);
+      wptLog(`Unable to find the article tag. Bailing...`);
       return;
     }
     this.articleTag = articleTagResults[0];
@@ -49,14 +54,14 @@ export class ChapterContent {
     // Chapter content is inside `entry-content` classed div
     const contentDivResult = document.getElementsByClassName('entry-content');
     if (contentDivResult.length === 0) {
-      console.log(`Unable to find 'entry-content' div. Bailing...`);
+      wptLog(`Unable to find 'entry-content' div. Bailing...`);
       return;
     }
 
     this.contentDiv = contentDivResult[0] as HTMLElement;
     const contentParagraphsResult = this.contentDiv.getElementsByTagName('p');
     if (contentParagraphsResult.length === 0) {
-      console.log(`Unable to find any paragraphs in content. Bailing...`);
+      wptLog(`Unable to find any paragraphs in content. Bailing...`);
       return;
     }
 
@@ -97,7 +102,7 @@ export class ChapterContent {
 
       // Don't autoscroll to the bookmark if the chapter is complete,
       // because the user has probably come back to reference something
-      if (!this.currentChapter.completed) {
+      if (this.currentChapter.percentCompletion !== 1.0) {
         paragraph.scrollIntoView({
           behavior: 'smooth',
           block: 'start'
@@ -133,7 +138,7 @@ export class ChapterContent {
   private prevClickY = 0;
   private addParagraphClickListeners(contentDiv: HTMLElement) {
     contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
-      console.log(`got mousedown`);
+      wptLog(`got mousedown`);
       if (!(evt.target instanceof Element)) {
         return;
       }
@@ -306,7 +311,7 @@ export class ChapterContent {
     // and will prevent sticky from working
     const mainTagResponse = document.getElementsByTagName('main');
     if (mainTagResponse.length === 0) {
-      console.log(`Unable to find <main> tag in chapter. Skipping injecting scrubber bar.`);
+      wptLog(`Unable to find <main> tag in chapter. Skipping injecting scrubber bar.`);
       return;
     } else {
       const mainTag = mainTagResponse[0];
@@ -485,7 +490,6 @@ export class ChapterContent {
 
     this.currentChapter.paragraphIndex = this.contentParagraphs.indexOf(paragraph);
     if (paragraph === this.lastParagraph) {
-      this.currentChapter.completed = true;
       this.currentChapter.percentCompletion = 1.0;
     } else {
       const selectedParagraphTop = this.getAbsoluteY(paragraph, yCoord);

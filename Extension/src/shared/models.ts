@@ -30,12 +30,6 @@ export type ChapterInfo = {
 
 export type UserChapterInfo = ChapterInfo & {
   /**
-   * Only true if the user has clicked "next" while at the end of a chapter,
-   * or explicitly marked a chapter as complete.
-   */
-  completed: boolean; // TODO: do we need this, or can we just derive it by checking percentCompletion? or make it a function, and it won't get serialized
-
-  /**
    * Value between 0.0 and 1.0.
    * A value of 1.0 does **not** necessarily imply completion.
    *

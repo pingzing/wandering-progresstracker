@@ -1,16 +1,15 @@
 import { runtime, tabs, type Runtime } from 'webextension-polyfill';
-import { detect } from 'detect-browser';
+
 import {
-  type BrowserMessage,
   type BrowserMessageType,
   type ChapterInfo,
   type ColorScheme,
   type StoryUrl,
   type UserChapterInfo
 } from './shared/models';
-import settingsService from './background/settingsService';
 import chapterService from './background/chapterService';
 import { mapToString, stringToMap } from './shared/serialization';
+import { wptLog } from './shared/logging';
 
 runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
@@ -30,7 +29,7 @@ function onMessage(
   sender: Runtime.MessageSender,
   sendResponse: (x?: any) => void
 ): true | void | Promise<any> {
-  console.log('got message', message);
+  wptLog('got message', message);
   switch (message.type as BrowserMessageType) {
     case 'gotColorScheme': {
       updateIcon(message.value as ColorScheme).then(sendResponse);
@@ -72,6 +71,6 @@ function updateChapters(
 }
 
 async function updateIcon(colorScheme: ColorScheme) {
-  console.log('updating icon', colorScheme);
+  wptLog('updating icon', colorScheme);
   // do work here
 }
