@@ -1,7 +1,7 @@
 import browser from 'webextension-polyfill';
-import type { BrowserMessage, StoryUrl, UserChapterInfo } from './models';
-import { mapToString, serializeAllToUrl, serializeChapterToUrl } from './serialization';
-import { debounce } from './timing';
+import type { BrowserMessage, StoryUrl, UserChapterInfo } from '../shared/models';
+import { mapToString, serializeAllToUrl, serializeChapterToUrl } from '../shared/serialization';
+import { debounce } from '../shared/timing';
 
 export class ChapterContent {
   private static readonly bookmarkButtonId = `toolbarBookmarkButton`;

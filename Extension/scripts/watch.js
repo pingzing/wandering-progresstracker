@@ -21,11 +21,13 @@ async function main() {
     outfile: './dist/content.js'
   })).watch();
 
-  const cssJob = (await esbuild.context({
-    ...commonConfig,
-    entryPoints: ['./src/content.css'],
-    outfile: './dist/content.css'
-  })).watch();
+  const cssJob = (
+    await esbuild.context({
+      ...commonConfig,
+      entryPoints: ['./src/wpt.css'],
+      outfile: './dist/wpt.css'
+    })
+  ).watch();
 
   const backgroundJob = (await esbuild.context({
     ...commonConfig,

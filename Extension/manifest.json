@@ -24,7 +24,7 @@
     {
       "js": ["dist/content.js"],
       "css": [
-        "dist/content.css"
+        "dist/wpt.css"
       ],
       "matches": ["*://wanderinginn.com/*"]
     }

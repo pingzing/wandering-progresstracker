@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import type { ChapterInfo, UserChapterInfo, StoryUrl, UserData } from './models';
+import type { ChapterInfo, UserChapterInfo, StoryUrl, UserData } from '../shared/models';
 import { gzipSync, decompressSync, strFromU8, strToU8 } from 'fflate';
 
 class UserDataService {
@@ -24,7 +24,7 @@ class UserDataService {
                 [UserDataService.tocLastUpdatedKey]: date
             });
         }
-        catch(e) {
+        catch (e) {
             console.log(`Failed to set tocLastUpdated: ${e}`);
         }
     }

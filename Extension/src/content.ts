@@ -5,12 +5,12 @@ import {
   type ColorScheme,
   type StoryUrl,
   type UserChapterInfo
-} from './models';
-import * as tocService from './tocService';
-import * as serialization from './serialization';
-import { serializeAllToUrl, serializeChapterToUrl } from './serialization';
-import { ChapterContent } from './chapterContent';
-import { TocContent } from './tocContent';
+} from './shared/models';
+import * as tocService from './shared/tocService';
+import * as serialization from './shared/serialization';
+import { serializeAllToUrl, serializeChapterToUrl } from './shared/serialization';
+import { ChapterContent } from './content/chapterContent';
+import { TocContent } from './content/tocContent';
 
 setupMessageHandlers();
 if (document.readyState === 'loading') {

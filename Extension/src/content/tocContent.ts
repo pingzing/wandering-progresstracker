@@ -1,4 +1,4 @@
-import type { StoryUrl, UserChapterInfo } from './models';
+import type { StoryUrl, UserChapterInfo } from '../shared/models';
 
 export class TocContent {
   private chapters: Map<StoryUrl, UserChapterInfo>;

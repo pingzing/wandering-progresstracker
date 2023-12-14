@@ -1,7 +1,7 @@
-import type { ChapterInfo, UserChapterInfo, StoryUrl } from './models';
+import type { ChapterInfo, UserChapterInfo, StoryUrl } from '../shared/models';
 import userDataService from './userDataService';
-import * as tocService from './tocService';
-import { mapToString, stringToMap } from './serialization';
+import * as tocService from '../shared/tocService';
+import { mapToString, stringToMap } from '../shared/serialization';
 
 // TODO: refactor this whole damn class, having to move from in-memory things to sessionStorage has made a mess of it
 class ChapterService {

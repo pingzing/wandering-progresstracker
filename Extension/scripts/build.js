@@ -26,8 +26,8 @@ async function main() {
 
   const cssJob = build({
     ...commonConfig,
-    entryPoints: ['./src/content.css'],
-    outfile: './dist/content.css'
+    entryPoints: ['./src/wpt.css'],
+    outfile: './dist/wpt.css'
   });
 
   const backgroundJob = build({

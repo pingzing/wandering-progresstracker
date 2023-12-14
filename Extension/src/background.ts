@@ -7,10 +7,10 @@ import {
   type ColorScheme,
   type StoryUrl,
   type UserChapterInfo
-} from './models';
-import settingsService from './settingsService';
-import chapterService from './chapterService';
-import { mapToString, stringToMap } from './serialization';
+} from './shared/models';
+import settingsService from './background/settingsService';
+import chapterService from './background/chapterService';
+import { mapToString, stringToMap } from './shared/serialization';
 
 runtime.onInstalled.addListener(details => {
   if (details.reason === 'install') {
