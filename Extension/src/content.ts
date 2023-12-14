@@ -2,8 +2,6 @@ import browser from 'webextension-polyfill';
 
 import {
   type BrowserMessage,
-  type BrowserMessageType,
-  type ColorScheme,
   type StoryUrl,
   type UserChapterInfo
 } from './shared/models';
@@ -13,7 +11,6 @@ import { ChapterContent } from './content/chapterContent';
 import { TocContent } from './content/tocContent';
 import { wptLog } from './shared/logging';
 
-setupMessageHandlers();
 if (document.readyState === 'loading') {
   addEventListener('DOMContentLoaded', onLoaded);
 } else {
@@ -102,24 +99,4 @@ async function onLoaded(): Promise<void> {
     chapterContent = new ChapterContent(chapters, urlNoParams);
     return;
   }
-}
-
-function setupMessageHandlers(): void {
-  browser.runtime.onMessage.addListener(message => {
-    wptLog('got message', message);
-    switch (message.type as BrowserMessageType) {
-      case 'getColorScheme': {
-        return Promise.resolve(getColorScheme());
-      }
-    }
-  });
-}
-
-function getColorScheme() {
-  let scheme: ColorScheme = 'light';
-  const darkModeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  if (darkModeMediaQuery.matches) {
-    scheme = 'dark';
-  }
-  return scheme;
 }

@@ -1,6 +1,4 @@
 export type BrowserMessageType =
-  | 'getColorScheme'
-  | 'gotColorScheme'
   | 'getChapters'
   | 'addNewChapters'
   | 'updateChapters';
@@ -8,10 +6,6 @@ export type BrowserMessageType =
 export type BrowserMessage = {
   type: BrowserMessageType;
   value?: any;
-};
-
-export type AppSettings = {
-  tocLastChecked: Date | null;
 };
 
 export type StoryUrl = string;
@@ -49,9 +43,10 @@ export type UserData = {
   savedChapters: Map<StoryUrl, UserChapterInfo>;
 };
 
-// Placeholder, for now.
+export type AppSettings = {
+  tocLastChecked: Date | null;
+};
+
 export const DEFAULT_SETTINGS: AppSettings = {
   tocLastChecked: null
 };
-
-export type ColorScheme = 'light' | 'dark';

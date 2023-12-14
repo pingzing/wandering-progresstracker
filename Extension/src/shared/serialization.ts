@@ -1,5 +1,6 @@
 import type { StoryUrl, UserChapterInfo } from "./models";
 import { ChapterStateKey, FullStateKey } from "./consts";
+import { wptLog } from "./logging";
 
 export type ChapterString = string;
 export function mapToString<K, V>(map: Map<K, V>): ChapterString {

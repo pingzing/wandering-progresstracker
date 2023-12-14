@@ -8,6 +8,8 @@ import { wptLog } from '../shared/logging';
 class ChapterService {
   private readonly domParser: DOMParser = new DOMParser();
   private static readonly sessionChaptersKey = `sessionChapters`;
+
+  // TODO: Make this crossplat-Chrome friendly
   private session: browser.storage.StorageArea = browser.storage.session;
 
   private async getSessionChapters(): Promise<string | null> {
