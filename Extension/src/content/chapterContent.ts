@@ -34,10 +34,12 @@ export class ChapterContent {
     this.url = url;
     this.currentChapter = this.chapters.get(this.url)!;
 
+    this.previousWidth = window.innerWidth;
     this.setup();
   }
 
   // TODOS:
+  // - Priority: bug where setting a bookmark manually messes with the bookmark's state for the rest of the session
   // - Add buttons to toolbar:
   //    - Jump to: Top, Bottom, Bookmark
   // - Maybe move "all to URL" into settings somewhere, instead of the per-chapter toolbar  
@@ -566,8 +568,16 @@ export class ChapterContent {
     this.updateScrubber();
   }
 
+  private previousWidth: number;
   private debouncedResize: (<U>(this: U) => void) | null = null;
   private onResize(): void {
+    // Ignore resizes that don't change window width.
+    // Mobile devices often show/hide the address bar on scroll,
+    // which triggers a resize, which we don't actually care about.
+    if (window.innerWidth === this.previousWidth) {
+      return;
+    }
+
     if (!this.debouncedResize) {
       this.debouncedResize = debounce(1000, () => {
         this.setBookmarkToFirstParagraphInViewport(window.scrollY);
@@ -581,5 +591,6 @@ export class ChapterContent {
 
     this.updateScrubberPadding();
     this.updateScrubber();
+    this.previousWidth = window.innerWidth;
   }
 }
