@@ -2,12 +2,20 @@
   import webextBrowser from 'webextension-polyfill';
   import { ConfigTabSettingsKey } from '../background';
   import { wptLog } from '../shared/logging';
+  import { type StoryUrl, type BrowserMessage, type UserChapterInfo } from '../shared/models';
+  import * as serialization from '../shared/serialization';
+  import { VolumeChapterCounts } from '../shared/consts';
+
+// main: (runs on load)
 
   const wanderingInnHostPermission = '*://wanderinginn.com/*';
   const inPopup = document.location.href.endsWith(`popup.html`);
 
+  // Tracks whether or not the extension has origins permission for the wandering inn hostname
+  // i.e. whether or the the extension is actually enabled or not
   let enabled: boolean = false;
-
+  
+  // Set up initial value of 'enabled' and listeners for host permissions changing
   webextBrowser.permissions
     .contains({
       origins: [wanderingInnHostPermission]
@@ -16,6 +24,30 @@
 
   webextBrowser.permissions.onRemoved.addListener(onPermissionRemoved);
   webextBrowser.permissions.onAdded.addListener(onPermissionAdded);
+
+  // Get user's progress from storage, if they have any  
+  const chapterGroupsPromise = webextBrowser.runtime.sendMessage(<BrowserMessage>{
+    type: 'getChapters'
+  }).then( (x: string) => {
+    const unsortedChapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(x);
+    const sortedChapters = Array.from(unsortedChapters).sort( (a,b) => a[1].chapterIndex - b[1].chapterIndex).map(x => x[1]);
+    // Group chapters by volume
+    let chapterGroups: UserChapterInfo[][] = [];
+    let prevCount = 0;
+    for (const chapterCount of VolumeChapterCounts) {
+      const volumeSlice = sortedChapters.slice(prevCount, prevCount + chapterCount);
+      chapterGroups.push(volumeSlice);
+      prevCount = prevCount + chapterCount;
+    }
+
+    // Get the final, in-progress volume
+    const inProgressSlice = sortedChapters.slice(prevCount);
+    chapterGroups.push(inProgressSlice);
+
+    return chapterGroups;
+  });
+
+  // End main
 
   function onPermissionRemoved(permissions: webextBrowser.Permissions.Permissions): void {
     if (permissions.origins?.some(x => wanderingInnHostPermission)) {
@@ -67,7 +99,7 @@
 
 <div class="config-div {inPopup ? 'popup' : ''}">
   <h2>Wandering ProgressTracker</h2>
-  Welcome to Wandering ProgressTracker! Click the button below, and click 'Allow' to activate the extension!
+  Welcome to Wandering ProgressTracker! {#if !enabled}Click the 'Enable' button below, then click 'Allow' to activate the extension!{/if}
   <br />
   <div id="enabled-row">
     Status:
@@ -77,32 +109,53 @@
       <span class="disabled">Disabled</span>
     {/if}
   </div>
-  <br />
-  {#if enabled}
-    You're good to go. Feel free to close this {#if inPopup} popup!{:else} tab!{/if}
-  {:else}
+  <br />  
+  {#if !enabled}
     <button type="button" on:click={onEnabledClicked}>Enable!</button>
   {/if}
   {#if inPopup}
+    {#if enabled}
+      You're good to go. Feel free to close this!
+    {/if}
     <br />
     <p>Want to see more settings? Open the full config page!</p>
     <button type="button" on:click={onOpenFullConfigClicked}>Open full config</button>
   {:else}
-    <!-- // TODO: Add:
-  //  - Setting for whether or not to hide the winter solstice theme
+    <!-- // TODO: Add:  
   //  - Setting for whether or not to automatically scroll to bookmark on incomplete chapters
   //  - Setting for whether or not to automatically scroll to bookmark on COMPLETE chapters (would require bringing back the 'completed' flag)
-  //  - Display for all chapter progress, with ability to mark each chapter as completed or not -->
+  //  - Display for all chapter progress, with ability to mark each chapter as completed or not 
+  //  - Button to "mark all as completed"
+  //  - Button to "clear data"?
+  -->
     <div class="settings-container">
       <h3>Settings</h3>
       <div class="settings-entry">
         <input type="checkbox"/>
-        <h5>Hide backgrounds</h5>
-      </div>
-      <div class="settings-entry">
-        <input type="checkbox"/>
+        <!-- todo: setup binding that makes this update stored settings -->
         <h5>Automatically scroll to bookmark</h5>
       </div>
+    </div>
+
+    <div class="progress-container">
+      <h3>Chapter Completion</h3>
+      <!-- Some kind of column header? Sticky? -->
+      {#await chapterGroupsPromise}
+        {:then chapterGroups}
+        {#each chapterGroups as chapterGroup, index}
+          <h4>Volume {index + 1}</h4> <!-- TODO: Expando collapso button, and overall progress percent, and gradient fill -->
+          <ol>
+          {#each chapterGroup as chapter}          
+            <li>              
+              <!-- todo: filling progress bar like on the toc -->
+              <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
+              (or maybe that just forces completiong percent to 100?) -->
+              {chapter.chapterName}: {chapter.percentCompletion}%
+            </li>      
+          {/each}
+          </ol>
+        {/each}
+      {/await}
     </div>
   {/if}
 </div>
@@ -116,9 +169,29 @@
     --dark-foregound: var(--background-color);
   }
 
+  :global(html) {
+    font-size: 18px;
+  }
+
   :global(body) {
     background-color: var(--background-color);
     color: var(--foreground-color);
+    font-size: 1rem;
+  }
+
+  h1 { font-size: 2.16rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.86rem; }
+  h4 { font-size: 1.5rem; }
+  h5 { font-size: 1.1rem; }
+  h6 { font-size: 1rem; }
+
+  h3, h4, h5, h6 {
+    margin: 1rem 0;
+  }
+
+  ol {
+    /* list-style-type: none; */
   }
 
   h1,
@@ -186,12 +259,17 @@
     display: flex;
     flex-direction: column;
     align-self: stretch;
+    margin-top: 1rem;
 
     & .settings-entry {
       display: flex;
       flex-direction: row;
       justify-content: start;
       gap: 0.5rem;
+
+      & h5 {
+        margin: 0; /*Already handled by gap above*/
+      }
     }
   }
 </style>

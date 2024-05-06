@@ -99,9 +99,6 @@ export class ChapterContent {
       this.bookmarkY = Math.floor(paragraphTop - articleTop);
       this.bookmarkedParagraph = paragraph;
 
-      // TODO: Make this a setting instead of unconditional
-      this.hideBackgrounds();
-
       // Don't autoscroll to the bookmark if the chapter is complete,
       // because the user has probably come back to reference something
       if (this.currentChapter.percentCompletion !== 1.0) {
@@ -386,16 +383,6 @@ export class ChapterContent {
     } else {
       this.scrubberCircleContainer.style.visibility = `visible`;
       this.scrubberCircleContainer.style.left = `${100 * completionMiddle}%`;
-    }
-  }
-
-  private hideBackgrounds() {
-    // parallax perf really sucks in Firefox, especailly on mobile, so hide them
-    // we'll make this a user-configurable setting later
-    const parallaxLayers = document.getElementsByClassName('winter-parallax-layer');
-    for (let i = 0; i < parallaxLayers.length; i++) {
-      const layer = parallaxLayers[i] as HTMLElement;
-      layer.style.display = `none`;
     }
   }
 

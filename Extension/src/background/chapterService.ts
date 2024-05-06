@@ -27,7 +27,7 @@ class ChapterService {
   }
 
   public async getChapters(): Promise<Map<StoryUrl, UserChapterInfo>> {
-    // Update if...
+    // 0. Update if...
     let shouldUpdate: boolean = false;
 
     // 1. The ToC is out of date, or has never been fetched
@@ -51,6 +51,7 @@ class ChapterService {
       shouldUpdate = !hasSavedData;
     }
 
+    // 3. If we need to update, fetch the ToC, then use that to get new chapter info.
     if (shouldUpdate) {
       const toc = await this.getToc();
       if (!toc) {
@@ -65,11 +66,14 @@ class ChapterService {
       await userDataService.setTocLastUpdated(new Date(Date.now()));
     }
 
+    // 4. Once everything is up to date, first try to fetch chapter info from storage and
+    // load it into the cache
     if (!userChaptersPayload) {
       const retrievedChapters = await userDataService.getChaptersFromStorage();
       await this.setSessionChapters(retrievedChapters);
     }
 
+    // 5. Return the newly-loaded cache or, if we don't have anything stored, an empty map
     userChaptersPayload = await this.getSessionChapters();
     if (!userChaptersPayload) {
       return new Map<StoryUrl, UserChapterInfo>();
