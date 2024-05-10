@@ -6,7 +6,7 @@
   import * as serialization from '../shared/serialization';
   import { VolumeChapterCounts } from '../shared/consts';
 
-// main: (runs on load)
+  // main: (runs on load)
 
   const wanderingInnHostPermission = '*://wanderinginn.com/*';
   const inPopup = document.location.href.endsWith(`popup.html`);
@@ -14,50 +14,31 @@
   // Tracks whether or not the extension has origins permission for the wandering inn hostname
   // i.e. whether or the the extension is actually enabled or not
   let enabled: boolean = false;
-  
+
+  // Tracks user's progress. Asynchronously filled when the extension is enabled.
+  let chapterGroups: UserChapterInfo[][] | null = null;
+
   // Set up initial value of 'enabled' and listeners for host permissions changing
   webextBrowser.permissions
     .contains({
       origins: [wanderingInnHostPermission]
     })
-    .then(x => (enabled = x));
+    .then(x => (setEnabled(x)));
 
   webextBrowser.permissions.onRemoved.addListener(onPermissionRemoved);
   webextBrowser.permissions.onAdded.addListener(onPermissionAdded);
-
-  // Get user's progress from storage, if they have any  
-  const chapterGroupsPromise = webextBrowser.runtime.sendMessage(<BrowserMessage>{
-    type: 'getChapters'
-  }).then( (x: string) => {
-    const unsortedChapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(x);
-    const sortedChapters = Array.from(unsortedChapters).sort( (a,b) => a[1].chapterIndex - b[1].chapterIndex).map(x => x[1]);
-    // Group chapters by volume
-    let chapterGroups: UserChapterInfo[][] = [];
-    let prevCount = 0;
-    for (const chapterCount of VolumeChapterCounts) {
-      const volumeSlice = sortedChapters.slice(prevCount, prevCount + chapterCount);
-      chapterGroups.push(volumeSlice);
-      prevCount = prevCount + chapterCount;
-    }
-
-    // Get the final, in-progress volume
-    const inProgressSlice = sortedChapters.slice(prevCount);
-    chapterGroups.push(inProgressSlice);
-
-    return chapterGroups;
-  });
 
   // End main
 
   function onPermissionRemoved(permissions: webextBrowser.Permissions.Permissions): void {
     if (permissions.origins?.some(x => wanderingInnHostPermission)) {
-      enabled = false;
+      setEnabled(false);
     }
   }
 
   function onPermissionAdded(permissions: webextBrowser.Permissions.Permissions): void {
     if (permissions.origins?.some(x => wanderingInnHostPermission)) {
-      enabled = true;
+      setEnabled(true);
     }
   }
 
@@ -69,6 +50,34 @@
       window.close();
     }
     // updated 'enabled' is handled by the event handlers up above
+  }
+
+  async function setEnabled(newEnabled: boolean): Promise<void> {
+    enabled = newEnabled;
+
+    if (newEnabled) {
+      const chapterString = await webextBrowser.runtime.sendMessage(<BrowserMessage>{
+        type: 'getChapters'
+      });
+      const unsortedChapters = serialization.stringToMap<StoryUrl, UserChapterInfo>(chapterString);
+      const sortedChapters = Array.from(unsortedChapters)
+        .sort((a, b) => a[1].chapterIndex - b[1].chapterIndex)
+        .map(x => x[1]);
+      // Group chapters by volume
+      let groups: UserChapterInfo[][] = [];
+      let prevCount = 0;
+      for (const chapterCount of VolumeChapterCounts) {
+        const volumeSlice = sortedChapters.slice(prevCount, prevCount + chapterCount);
+        groups.push(volumeSlice);
+        prevCount = prevCount + chapterCount;
+      }
+
+      // Get the final, in-progress volume
+      const inProgressSlice = sortedChapters.slice(prevCount);
+      groups.push(inProgressSlice);
+
+      chapterGroups = groups;
+    }
   }
 
   async function onOpenFullConfigClicked(): Promise<void> {
@@ -99,7 +108,8 @@
 
 <div class="config-div {inPopup ? 'popup' : ''}">
   <h2>Wandering ProgressTracker</h2>
-  Welcome to Wandering ProgressTracker! {#if !enabled}Click the 'Enable' button below, then click 'Allow' to activate the extension!{/if}
+  Welcome to Wandering ProgressTracker! {#if !enabled}Click the 'Enable' button below, then click
+    'Allow' to activate the extension!{/if}
   <br />
   <div id="enabled-row">
     Status:
@@ -109,7 +119,7 @@
       <span class="disabled">Disabled</span>
     {/if}
   </div>
-  <br />  
+  <br />
   {#if !enabled}
     <button type="button" on:click={onEnabledClicked}>Enable!</button>
   {/if}
@@ -131,32 +141,32 @@
     <div class="settings-container">
       <h3>Settings</h3>
       <div class="settings-entry">
-        <input type="checkbox"/>
+        <input type="checkbox" />
         <!-- todo: setup binding that makes this update stored settings -->
         <h5>Automatically scroll to bookmark</h5>
       </div>
     </div>
 
-    <div class="progress-container">
-      <h3>Chapter Completion</h3>
-      <!-- Some kind of column header? Sticky? -->
-      {#await chapterGroupsPromise}
-        {:then chapterGroups}
+    {#if enabled && chapterGroups !== null}
+      <div class="progress-container">
+        <h3>Chapter Completion</h3>
+        <!-- Some kind of column header? Sticky? -->
         {#each chapterGroups as chapterGroup, index}
-          <h4>Volume {index + 1}</h4> <!-- TODO: Expando collapso button, and overall progress percent, and gradient fill -->
+          <h4>Volume {index + 1}</h4>
+          <!-- TODO: Expando collapso button, and overall progress percent, and gradient fill -->
           <ol>
-          {#each chapterGroup as chapter}          
-            <li>              
-              <!-- todo: filling progress bar like on the toc -->
-              <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
-              (or maybe that just forces completiong percent to 100?) -->
-              {chapter.chapterName}: {chapter.percentCompletion}%
-            </li>      
-          {/each}
+            {#each chapterGroup as chapter}
+              <li>
+                <!-- todo: filling progress bar like on the toc -->
+                <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
+                (or maybe that just forces completiong percent to 100?) -->
+                {chapter.chapterName}: {chapter.percentCompletion}%
+              </li>
+            {/each}
           </ol>
         {/each}
-      {/await}
-    </div>
+      </div>
+    {/if}
   {/if}
 </div>
 
@@ -179,19 +189,34 @@
     font-size: 1rem;
   }
 
-  h1 { font-size: 2.16rem; }
-  h2 { font-size: 2rem; }
-  h3 { font-size: 1.86rem; }
-  h4 { font-size: 1.5rem; }
-  h5 { font-size: 1.1rem; }
-  h6 { font-size: 1rem; }
+  h1 {
+    font-size: 2.16rem;
+  }
+  h2 {
+    font-size: 2rem;
+  }
+  h3 {
+    font-size: 1.86rem;
+  }
+  h4 {
+    font-size: 1.5rem;
+  }
+  h5 {
+    font-size: 1.1rem;
+  }
+  h6 {
+    font-size: 1rem;
+  }
 
-  h3, h4, h5, h6 {
+  h3,
+  h4,
+  h5,
+  h6 {
     margin: 1rem 0;
   }
 
   ol {
-    /* list-style-type: none; */
+    list-style-type: none;
   }
 
   h1,
