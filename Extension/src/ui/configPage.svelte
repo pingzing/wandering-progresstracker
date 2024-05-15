@@ -10,6 +10,10 @@
 
   const wanderingInnHostPermission = '*://wanderinginn.com/*';
   const inPopup = document.location.href.endsWith(`popup.html`);
+  if (!inPopup) {
+    const root = document.getElementsByTagName('html')[0];
+    root.classList.add('show-scrollbar');
+  }
 
   // Tracks whether or not the extension has origins permission for the wandering inn hostname
   // i.e. whether or the the extension is actually enabled or not
@@ -23,7 +27,7 @@
     .contains({
       origins: [wanderingInnHostPermission]
     })
-    .then(x => (setEnabled(x)));
+    .then(x => setEnabled(x));
 
   webextBrowser.permissions.onRemoved.addListener(onPermissionRemoved);
   webextBrowser.permissions.onAdded.addListener(onPermissionAdded);
@@ -152,18 +156,22 @@
         <h3>Chapter Completion</h3>
         <!-- Some kind of column header? Sticky? -->
         {#each chapterGroups as chapterGroup, index}
-          <h4>Volume {index + 1}</h4>
-          <!-- TODO: Expando collapso button, and overall progress percent, and gradient fill -->
-          <ol>
-            {#each chapterGroup as chapter}
-              <li>
-                <!-- todo: filling progress bar like on the toc -->
-                <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
+          <details open>
+            <summary>
+              <h4>Volume {index + 1}</h4>
+            </summary>
+            <!-- TODO: and gradient fill -->
+            <ol>
+              {#each chapterGroup as chapter}
+                <li>
+                  <!-- todo: filling progress bar like on the toc -->
+                  <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
                 (or maybe that just forces completiong percent to 100?) -->
-                {chapter.chapterName}: {chapter.percentCompletion}%
-              </li>
-            {/each}
-          </ol>
+                  {chapter.chapterName}: {chapter.percentCompletion}%
+                </li>
+              {/each}
+            </ol>
+          </details>
         {/each}
       </div>
     {/if}
@@ -181,6 +189,11 @@
 
   :global(html) {
     font-size: 18px;
+  }
+
+  /* Used dynamically in the <html> root element if not in popup mode. */
+  :global(.show-scrollbar) {
+    overflow-y: scroll;
   }
 
   :global(body) {
@@ -213,10 +226,6 @@
   h5,
   h6 {
     margin: 1rem 0;
-  }
-
-  ol {
-    list-style-type: none;
   }
 
   h1,
@@ -256,20 +265,21 @@
     align-items: center;
     max-width: 40rem;
     gap: 5px;
+    & h2 {
+      text-align: center;
+    }
+    & button {
+      width: 100%;
+    }
+    & #enabled-row {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+    }
   }
 
   .config-div.popup {
     max-width: 18rem;
-  }
-
-  .config-div button {
-    width: 100%;
-  }
-
-  .config-div #enabled-row {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
   }
 
   .enabled {
@@ -295,6 +305,32 @@
       & h5 {
         margin: 0; /*Already handled by gap above*/
       }
+    }
+  }
+
+  .progress-container {
+    display: flex;
+    flex-direction: column;
+    align-self: stretch;
+    & details {
+      display: inline-flex;
+      & ol {
+        list-style-type: none;
+        padding-left: 0;
+      }
+    }
+    & summary {
+      display: inline-grid;
+      grid-auto-flow: column;
+    }
+    & summary::after {
+      align-self: center;
+      justify-self: end;
+      content: '>';
+      transition: 0.1s;
+    }
+    & details[open] > summary::after {
+      transform: rotate(90deg);
     }
   }
 </style>
