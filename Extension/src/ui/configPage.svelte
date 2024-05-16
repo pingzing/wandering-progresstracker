@@ -154,7 +154,6 @@
     {#if enabled && chapterGroups !== null}
       <div class="progress-container">
         <h3>Chapter Completion</h3>
-        <!-- Some kind of column header? Sticky? -->
         {#each chapterGroups as chapterGroup, index}
           <details open>
             <summary>

@@ -105,6 +105,7 @@ class ChapterService {
       currentSessionChapters.set(chapterUrl, {
         chapterIndex: chapterInfo.chapterIndex,
         chapterName: chapterInfo.chapterName,
+        completed: false,
         percentCompletion: 0.0,
         paragraphIndex: null
       });

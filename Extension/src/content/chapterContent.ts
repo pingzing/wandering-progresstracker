@@ -39,7 +39,6 @@ export class ChapterContent {
   }
 
   // TODOS:
-  // - Priority: bug where setting a bookmark manually messes with the bookmark's state for the rest of the session
   // - Add buttons to toolbar:
   //    - Jump to: Top, Bottom, Bookmark
   // - Maybe move "all to URL" into settings somewhere, instead of the per-chapter toolbar  
@@ -101,7 +100,7 @@ export class ChapterContent {
 
       // Don't autoscroll to the bookmark if the chapter is complete,
       // because the user has probably come back to reference something
-      if (this.currentChapter.percentCompletion !== 1.0) {
+      if (!this.currentChapter.completed) {
         paragraph.scrollIntoView({
           behavior: 'smooth',
           block: 'start'
@@ -137,10 +136,10 @@ export class ChapterContent {
   private prevClickY = 0;
   private addParagraphClickListeners(contentDiv: HTMLElement) {
     contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
-      wptLog(`got mousedown`);
       if (!(evt.target instanceof Element)) {
         return;
       }
+      // TODO: Check for other tags as well, because some are wrapped in <pre> <code>, mrsha-text, etc
       if (evt.target.tagName !== 'P') {
         return;
       }
@@ -148,6 +147,7 @@ export class ChapterContent {
       this.prevClickY = evt.clientY;
     });
     contentDiv.addEventListener('click', (evt: MouseEvent) => {
+      // TODO: Check for other tags as well, because some are wrapped in <pre> <code>, mrsha-text, etc
       if (!(evt.target instanceof HTMLParagraphElement)) {
         return;
       }
@@ -479,6 +479,7 @@ export class ChapterContent {
 
     this.currentChapter.paragraphIndex = this.contentParagraphs.indexOf(paragraph);
     if (paragraph === this.lastParagraph) {
+      this.currentChapter.completed = true;
       this.currentChapter.percentCompletion = 1.0;
     } else {
       const selectedParagraphTop = this.getAbsoluteY(paragraph, yCoord);

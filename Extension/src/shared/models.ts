@@ -33,6 +33,12 @@ export type UserChapterInfo = ChapterInfo & {
   percentCompletion: number;
 
   /**
+ * Only true if the user has clicked "next" while at the end of a chapter,
+ * or explicitly marked a chapter as complete.
+ */
+  completed: boolean;
+
+  /**
    * The index of the <p> element at which the bookmark should be placed.
    * Null if the user has not yet started this chapter.
    */

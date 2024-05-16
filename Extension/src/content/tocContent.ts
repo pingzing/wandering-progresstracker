@@ -56,7 +56,7 @@ export class TocContent {
     const percent = chapterInfo.percentCompletion * 100;
     const completedGreen = 'rgba(110, 166, 102, 0.45)';
 
-    if (chapterInfo.percentCompletion === 1.0) {
+    if (chapterInfo.completed) {
       chapterCell.style.background = completedGreen;
     } else {
       chapterCell.style.background = `linear-gradient(to right, #99ccff82 ${percent}%, transparent ${percent}%, transparent)`;
@@ -67,7 +67,7 @@ export class TocContent {
     const percentageDiv = document.createElement('div');
     percentageDiv.classList.add('wpt-toc-percentage');
 
-    if (chapterInfo.percentCompletion === 1.0) {
+    if (chapterInfo.completed) {
       // force this, because we allow completed chapters with non-100% completion,
       // with the plan to allow re-reads in the future
       percentageDiv.textContent = `100%`;
