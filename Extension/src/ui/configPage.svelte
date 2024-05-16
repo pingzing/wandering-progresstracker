@@ -5,6 +5,7 @@
   import { type StoryUrl, type BrowserMessage, type UserChapterInfo } from '../shared/models';
   import * as serialization from '../shared/serialization';
   import { VolumeChapterCounts } from '../shared/consts';
+  import settingsService  from '../background/settingsService';
 
   // main: (runs on load)
 
@@ -21,6 +22,9 @@
 
   // Tracks user's progress. Asynchronously filled when the extension is enabled.
   let chapterGroups: UserChapterInfo[][] | null = null;
+
+  // Settings stored in the settings services
+  const initialAppSettingsPromise = settingsService.getAppSettings();
 
   // Set up initial value of 'enabled' and listeners for host permissions changing
   webextBrowser.permissions
@@ -108,6 +112,14 @@
       }
     }
   }
+  
+  async function onAutoScrollToBookmarkChange(checkbox: EventTarget & HTMLInputElement): Promise<void> {
+    await settingsService.updateSettings({ autoScrollToBookmark: checkbox.checked });
+  }
+  
+  async function onAutoScrollToBookmarkForCompletedChange(checkbox: EventTarget & HTMLInputElement): Promise<void> {
+    await settingsService.updateSettings({ autoScrollToBookmarkForCompleted: checkbox.checked });
+  }
 </script>
 
 <div class="config-div {inPopup ? 'popup' : ''}">
@@ -137,36 +149,53 @@
   {:else}
     <!-- // TODO: Add:  
   //  - Setting for whether or not to automatically scroll to bookmark on incomplete chapters
-  //  - Setting for whether or not to automatically scroll to bookmark on COMPLETE chapters (would require bringing back the 'completed' flag)
+  //  - Setting for whether or not to automatically scroll to bookmark on COMPLETE chapters
   //  - Display for all chapter progress, with ability to mark each chapter as completed or not 
   //  - Button to "mark all as completed"
   //  - Button to "clear data"?
   -->
+    {#await initialAppSettingsPromise}
+    <p>Loading app settings...</p>
+    {:then initialAppSettings}
     <div class="settings-container">
       <h3>Settings</h3>
       <div class="settings-entry">
-        <input type="checkbox" />
+        <input id="autoScrollCheckbox" type="checkbox" checked={initialAppSettings.autoScrollToBookmark} on:change={(x) => onAutoScrollToBookmarkChange(x.currentTarget)} />
         <!-- todo: setup binding that makes this update stored settings -->
-        <h5>Automatically scroll to bookmark</h5>
+        <label for="autoScrollCheckbox">Automatically scroll to bookmark</label>
+      </div>
+      <div class="settings-entry">
+        <input id="autoScrollCompletedCheckbox" type="checkbox" checked={initialAppSettings.autoScrollToBookmarkForCompleted} on:change={(x) => onAutoScrollToBookmarkForCompletedChange(x.currentTarget)} />
+        <label for="autoScrollCompletedCheckbox">Automatically scroll to bookmark for completed chapters</label>
       </div>
     </div>
+    {/await}
 
     {#if enabled && chapterGroups !== null}
       <div class="progress-container">
         <h3>Chapter Completion</h3>
         {#each chapterGroups as chapterGroup, index}
-          <details open>
+          <details>
             <summary>
               <h4>Volume {index + 1}</h4>
             </summary>
             <!-- TODO: and gradient fill -->
+            <div class="volume-header">
+              <h5>Chapter</h5>
+              <h5 class="centered">Progress</h5>
+              <h5 class="centered">Complete?</h5>
+            </div>
             <ol>
               {#each chapterGroup as chapter}
                 <li>
                   <!-- todo: filling progress bar like on the toc -->
-                  <!-- also todo: mark completed button (if we're bringing back 'completed' as a concept)
-                (or maybe that just forces completiong percent to 100?) -->
-                  {chapter.chapterName}: {chapter.percentCompletion}%
+                  <div class="chapter-progress-border">
+                    <div>{chapter.chapterName}</div>
+                    <!-- todo: round off the completion percentage -->
+                    <div class="percentage">{chapter.percentCompletion}%</div>
+                  </div>
+                  <!-- todo: handle completed check changed -->
+                  <input value="{chapter.completed}" type="checkbox"/>
                 </li>
               {/each}
             </ol>
@@ -298,11 +327,20 @@
     & .settings-entry {
       display: flex;
       flex-direction: row;
-      justify-content: start;
-      gap: 0.5rem;
+      justify-content: start;      
 
-      & h5 {
-        margin: 0; /*Already handled by gap above*/
+      & input {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      & label {
+        color: var(--accent-color);
+        cursor: pointer;
+        font-size: 1.1rem;
+        font-family: 'Sudbury', 'Merriweather', serif;
+        font-weight: 700;
+        padding: 0.5rem
       }
     }
   }
@@ -313,20 +351,53 @@
     align-self: stretch;
     & details {
       display: inline-flex;
+      & .volume-header {
+        display: grid;
+        grid-template-columns: 6fr 1fr 3fr;
+        & h5 {
+          display: inline;
+        }
+        & h5.centered {
+          text-align: center;
+        }
+      }
       & ol {
         list-style-type: none;
+        margin-top: 0.5rem;
         padding-left: 0;
+        & li {
+          display: grid;
+          grid-template-columns: 7fr 3fr;
+          & .chapter-progress-border {
+            border: 1px solid gray;
+            display: grid;
+            grid-template-columns: 9fr 1fr;
+          }
+          & .percentage {
+            text-align: right;
+            justify-self: end;
+          }
+          & input {
+            justify-self: center;
+          }
+        }
       }
     }
     & summary {
+      cursor: pointer;
       display: inline-grid;
       grid-auto-flow: column;
+      user-select: none;
+      & h4 {
+        margin: 0.5rem 0;
+      }
     }
     & summary::after {
       align-self: center;
       justify-self: end;
       content: '>';
       transition: 0.1s;
+      cursor: pointer;
     }
     & details[open] > summary::after {
       transform: rotate(90deg);

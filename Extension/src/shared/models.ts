@@ -52,9 +52,11 @@ export type UserData = {
 export type AppSettings = {
   tocLastChecked: Date | null;
   autoScrollToBookmark: boolean;
+  autoScrollToBookmarkForCompleted: boolean;
 };
 
 export const DEFAULT_SETTINGS: AppSettings = {
   tocLastChecked: null,
   autoScrollToBookmark: true,
+  autoScrollToBookmarkForCompleted: false,
 };
