@@ -15,6 +15,7 @@
   border-left: none;
   border-right: none;
   transition: top 0.2s;
+  z-index: 1; /* Required, because the parent we inject into sits behind other content. */
 }
 
 .wpt-paragraph-highlight {
@@ -28,6 +29,7 @@
   right: 0;
   border-left: none;
   border-right: none;
+  z-index: 1; /* Required, because the parent we inject into sits behind other content. */
   &.visible {
     display: block;
   }
@@ -66,12 +68,15 @@
 }
 
 .wpt-scrubber {
+  /* Required, because the scrubber's direct parent is a display:flex, and if we don't do this, we have no horizontal width */
+  align-self: stretch;
   height: 4px;
   position: sticky;
   top: 0;
   /* margin-left set in code to overcome article padding */
   /* margin-right set in code to overcome article padding */
   background-color: var(--reader-body-background);
+  z-index: 1;
   .wpt-scrubber-bar {
     background-color: var(--accent-primary);
     position: absolute;
@@ -88,7 +93,7 @@
     background-color: var(--accent-primary);
     width: 10px;
     height: 10px;
-    border-radius: 50%;
+    border-radius: 50% !important;
     position: absolute;
     top: -3px;
     left: -5px;

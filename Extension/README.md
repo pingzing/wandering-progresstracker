@@ -20,3 +20,8 @@ npm run build:firefox
 # The bundled extension will be in /Extension as packaged-extension.zip, and the source code
 # in extension-source.zip.
 ```
+
+### Running locally
+
+ - Run `npm run watch` from the Extensions folder to get rebuilding-on-file changes
+ - Run `npx web-ext run` from the Extensions folder to get a Firefox instance with the extension installed, and reloading-on-file changes.

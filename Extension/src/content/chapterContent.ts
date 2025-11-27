@@ -11,17 +11,17 @@ export class ChapterContent {
   private currentChapter: UserChapterInfo;
   private url: string; // all extra params stripped off
   private previousScrollY: number = 0;
-  private bookmarkY: number = 0; // Relative to the <article> tag, *not* the first paragraph.
+  private bookmarkY: number = 0; // Relative to the top of the bg-content's top, *not* the first paragraph.
   private isHighlightvisible: boolean = false;
 
-  private articleTag: HTMLElement | null = null;
+  private bookmarkParent: HTMLElement | null = null;
   private contentDiv: HTMLElement | null = null;
-  private contentParagraphs: HTMLParagraphElement[] | null = null;
-  private firstParagraph: HTMLParagraphElement | null = null;
-  private lastParagraph: HTMLParagraphElement | null = null;
+  private contentParagraphs: HTMLElement[] | null = null;
+  private firstParagraph: HTMLElement | null = null;
+  private lastParagraph: HTMLElement | null = null;
   private bookmarkDiv: HTMLDivElement | null = null;
-  private selectedParagraph: HTMLParagraphElement | null = null;
-  private bookmarkedParagraph: HTMLParagraphElement | null = null;
+  private selectedParagraph: HTMLElement | null = null;
+  private bookmarkedParagraph: HTMLElement | null = null;
   private paragraphHighlight: HTMLDivElement | null = null;
   private paragraphToolbar: HTMLDivElement | null = null;
   private scrubberContainer: HTMLDivElement | null = null;
@@ -41,25 +41,22 @@ export class ChapterContent {
   // TODOS:
   // - Add buttons to toolbar:
   //    - Jump to: Top, Bottom, Bookmark
-  // - Maybe move "all to URL" into settings somewhere, instead of the per-chapter toolbar  
   private setup() {
-    // We need this, because it's the closest 'position: relative' ancestor, so that's what
-    // the bookmark winds up being parented to.
-    const articleTagResults = document.getElementsByTagName('article');
-    if (articleTagResults.length === 0) {
-      wptLog(`Unable to find the article tag. Bailing...`);
+    const backgroundDivResults = document.getElementsByClassName('bg-container');
+    if (backgroundDivResults.length === 0) {
+      wptLog(`Unable to find the bg-container div. Bailing...`);
       return;
     }
-    this.articleTag = articleTagResults[0];
+    this.bookmarkParent = backgroundDivResults[0] as HTMLElement;
 
-    // Chapter content is inside `entry-content` classed div
-    const contentDivResult = document.getElementsByClassName('entry-content');
-    if (contentDivResult.length === 0) {
-      wptLog(`Unable to find 'entry-content' div. Bailing...`);
+    // Chapter content is inside `reader-content` classed div
+    const contentDivResult = document.getElementById('reader-content');
+    if (!contentDivResult) {
+      wptLog(`Unable to find 'reader-content' div. Bailing...`);
       return;
     }
 
-    this.contentDiv = contentDivResult[0] as HTMLElement;
+    this.contentDiv = contentDivResult;
     const contentParagraphsResult = this.contentDiv.getElementsByTagName('p');
     if (contentParagraphsResult.length === 0) {
       wptLog(`Unable to find any paragraphs in content. Bailing...`);
@@ -67,9 +64,9 @@ export class ChapterContent {
     }
 
     this.addParagraphClickListeners(this.contentDiv);
-    this.injectParagraphHighlight(this.articleTag);
-    this.injectScrubber(this.articleTag);
-    this.addNextChapterListener(this.articleTag);
+    this.injectParagraphHighlight(this.bookmarkParent);
+    this.injectScrubber(this.bookmarkParent);
+    this.addNextChapterListener(this.bookmarkParent);
 
     // ---Initial bookmark setup---
 
@@ -83,28 +80,32 @@ export class ChapterContent {
 
     this.bookmarkDiv = document.createElement('div');
     this.bookmarkDiv.className = 'wpt-bookmark';
-    this.contentDiv.prepend(this.bookmarkDiv);
+    this.bookmarkParent.prepend(this.bookmarkDiv);
 
     const firstParagraphTop = this.getAbsoluteY(this.firstParagraph);
-    const articleTop = this.getAbsoluteY(this.articleTag);
-    this.bookmarkDiv.style.top = `${Math.floor(firstParagraphTop - articleTop)}px`;
+    const backgroundTop = this.getAbsoluteY(this.bookmarkParent);
+    this.bookmarkDiv.style.top = `${Math.floor(firstParagraphTop - backgroundTop)}px`;
     this.bookmarkedParagraph = this.firstParagraph;
     // ---
 
     if (this.currentChapter.paragraphIndex) {
       const paragraph = this.contentParagraphs[this.currentChapter.paragraphIndex];
       const paragraphTop = this.getAbsoluteY(paragraph);
-      this.bookmarkDiv.style.top = `${Math.floor(paragraphTop - articleTop)}px`;
-      this.bookmarkY = Math.floor(paragraphTop - articleTop);
+      this.bookmarkDiv.style.top = `${Math.floor(paragraphTop - backgroundTop)}px`;
+      this.bookmarkY = Math.floor(paragraphTop - backgroundTop);
       this.bookmarkedParagraph = paragraph;
 
       // Don't autoscroll to the bookmark if the chapter is complete,
       // because the user has probably come back to reference something
       if (!this.currentChapter.completed) {
-        paragraph.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start'
-        });
+        if (document.visibilityState === 'visible') {
+          paragraph.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        } else {
+          document.addEventListener('visibilitychange', this.boundOnLateVisibility);
+        }
       }
     }
 
@@ -114,8 +115,23 @@ export class ChapterContent {
     window.addEventListener('resize', () => this.updateScrubber());
   }
 
-  private addNextChapterListener(article: HTMLElement): void {
-    const navNextResult = article.getElementsByClassName('nav-next');
+  // Binding the function to `this` so the eventListener has access to 'this`, and can also be removed later.
+  private boundOnLateVisibility = this.onLateVisible.bind(this);
+  private onLateVisible(): void {
+    if (document.visibilityState === 'visible') {
+      window.removeEventListener('visibilitychange', this.boundOnLateVisibility);
+      if (this.currentChapter?.paragraphIndex && this.contentParagraphs) {
+        const paragraph = this.contentParagraphs[this.currentChapter.paragraphIndex];
+        paragraph.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    }
+  }
+
+  private addNextChapterListener(bookmarkParent: HTMLElement): void {
+    const navNextResult = bookmarkParent.getElementsByClassName('nav-next');
     if (navNextResult.length === 0) {
       return;
     }
@@ -132,23 +148,25 @@ export class ChapterContent {
     });
   }
 
+  private validClickTags = ['P', 'SPAN', 'PRE', 'CODE', 'STRONG', 'EM'];
   private prevClickX = 0;
   private prevClickY = 0;
   private addParagraphClickListeners(contentDiv: HTMLElement) {
     contentDiv.addEventListener('mousedown', (evt: MouseEvent) => {
-      if (!(evt.target instanceof Element)) {
+      if (!(evt.target instanceof HTMLElement)) {
         return;
       }
-      // TODO: Check for other tags as well, because some are wrapped in <pre> <code>, mrsha-text, etc
-      if (evt.target.tagName !== 'P') {
+      if (!this.validClickTags.includes(evt.target.tagName)) {
         return;
       }
       this.prevClickX = evt.clientX;
       this.prevClickY = evt.clientY;
     });
     contentDiv.addEventListener('click', (evt: MouseEvent) => {
-      // TODO: Check for other tags as well, because some are wrapped in <pre> <code>, mrsha-text, etc
-      if (!(evt.target instanceof HTMLParagraphElement)) {
+      if (!(evt.target instanceof HTMLElement)) {
+        return;
+      }
+      if (!this.validClickTags.includes(evt.target.tagName)) {
         return;
       }
       if (
@@ -163,14 +181,14 @@ export class ChapterContent {
       } else {
         this.showHighlight(evt.target);
       }
-      if (evt.target instanceof HTMLParagraphElement) {
+      if (evt.target instanceof HTMLElement) {
         this.selectedParagraph = evt.target;
       }
       this.updateHighlight();
     });
   }
 
-  private injectParagraphHighlight(articleTag: HTMLElement): void {
+  private injectParagraphHighlight(bookmarkParent: HTMLElement): void {
     // First, the wrapper element that highlights paragraphs
     this.paragraphHighlight = document.createElement('div');
     this.paragraphHighlight.classList.add(`wpt-paragraph-highlight`);
@@ -224,38 +242,17 @@ export class ChapterContent {
     });
     this.paragraphToolbar.appendChild(bookmarkButton);
 
-    const chapterToUrlButton = document.createElement('button');
-    chapterToUrlButton.type = 'button';
-    chapterToUrlButton.textContent = 'Chapter to URL';
-    chapterToUrlButton.addEventListener(`click`, _ => {
-      if (!this.selectedParagraph) {
-        return;
-      }
-      const chapterUrl = window.location.origin + window.location.pathname;
-      const serializedUrl = serializeChapterToUrl(chapterUrl, this.currentChapter);
-      history.pushState(``, ``, serializedUrl);
+    const bookmarktoUrlButton = document.createElement('button');
+    bookmarktoUrlButton.type = 'button';
+    bookmarktoUrlButton.textContent = 'Bookmark to URL';
+    bookmarktoUrlButton.addEventListener(`click`, _ => {
+      this.bookmarkToUrl();
     });
-    this.paragraphToolbar.appendChild(chapterToUrlButton);
-
-    const allToUrlButton = document.createElement('button');
-    allToUrlButton.type = 'button';
-    allToUrlButton.textContent = 'All to URL';
-    allToUrlButton.addEventListener(`click`, _ => {
-      browser.runtime
-        .sendMessage(<BrowserMessage>{
-          type: `getChapters`
-        })
-        .then(chapterString => {
-          const chapterUrl = window.location.origin + window.location.pathname;
-          const url = serializeAllToUrl(chapterUrl, chapterString);
-          history.replaceState(``, ``, url);
-        });
-    });
-    this.paragraphToolbar.appendChild(allToUrlButton);
+    this.paragraphToolbar.appendChild(bookmarktoUrlButton);
 
     const closeButton = document.createElement(`button`);
     closeButton.type = `button`;
-    closeButton.textContent = `\u2716`; // ✖
+    closeButton.textContent = `X`;
     closeButton.addEventListener(`click`, _ => {
       this.hideHighlight();
     });
@@ -263,11 +260,20 @@ export class ChapterContent {
 
     this.paragraphHighlight.appendChild(this.paragraphToolbar);
 
-    articleTag.prepend(this.paragraphHighlight);
+    bookmarkParent.prepend(this.paragraphHighlight);
+  }
+
+  private bookmarkToUrl(): void {
+    if (!this.selectedParagraph) {
+      return;
+    }
+    const chapterUrl = window.location.origin + window.location.pathname;
+    const serializedUrl = serializeChapterToUrl(chapterUrl, this.currentChapter);
+    history.replaceState('', '', serializedUrl);
   }
 
   private updateHighlight() {
-    if (!this.selectedParagraph || !this.paragraphHighlight || !this.articleTag) {
+    if (!this.selectedParagraph || !this.paragraphHighlight || !this.bookmarkParent) {
       return;
     }
 
@@ -276,8 +282,8 @@ export class ChapterContent {
     }
 
     // Height and position
-    const articleTop = this.getAbsoluteY(this.articleTag);
-    const paragraphY = this.getAbsoluteY(this.selectedParagraph) - articleTop;
+    const bookmarkParentTop = this.getAbsoluteY(this.bookmarkParent);
+    const paragraphY = this.getAbsoluteY(this.selectedParagraph) - bookmarkParentTop;
     this.paragraphHighlight.style.transform = `translate(0px, ${Math.round(paragraphY)}px)`;
     this.paragraphHighlight.style.height = `${Math.round(this.selectedParagraph.offsetHeight)}px`;
 
@@ -289,7 +295,7 @@ export class ChapterContent {
     }
   }
 
-  private showHighlight(element: HTMLParagraphElement): void {
+  private showHighlight(element: HTMLElement): void {
     this.isHighlightvisible = true;
     this.selectedParagraph = element;
 
@@ -305,18 +311,7 @@ export class ChapterContent {
     }
   }
 
-  private injectScrubber(articleTag: HTMLElement): void {
-    // Remove overflow: hidden from <main> tag, as its an ancestor of the scrubber bar button,
-    // and will prevent sticky from working
-    const mainTagResponse = document.getElementsByTagName('main');
-    if (mainTagResponse.length === 0) {
-      wptLog(`Unable to find <main> tag in chapter. Skipping injecting scrubber bar.`);
-      return;
-    } else {
-      const mainTag = mainTagResponse[0];
-      mainTag.style.overflow = 'visible';
-    }
-
+  private injectScrubber(bookmarkParent: HTMLElement): void {
     // div at the top, 4px tall horizontal bar that holds the scrubber
     // child div, scrubber, with position: absolute and background-color. left% and right% to position and shape the bar
     // child div of that, scrubberCircle, which is just a circle in the center of the scrubber bar. left, no right
@@ -335,21 +330,21 @@ export class ChapterContent {
 
     this.scrubberContainer.appendChild(this.scrubberBar);
     this.scrubberContainer.appendChild(this.scrubberCircleContainer);
-    articleTag.prepend(this.scrubberContainer);
+    bookmarkParent.prepend(this.scrubberContainer);
 
     this.updateScrubberPadding();
     this.updateScrubber();
   }
 
   private updateScrubberPadding(): void {
-    if (!this.scrubberContainer || !this.articleTag) {
+    if (!this.scrubberContainer || !this.bookmarkParent) {
       return;
     }
 
-    // adjust paddings to overcome the article tag's padding,
+    // adjust paddings to overcome the bg-container tag's padding,
     // because it changes on resize, so we can't really do this in CSS
-    const articlePadding = getComputedStyle(this.articleTag).padding;
-    const negativePadding = `-${articlePadding}`;
+    const backgroundContainerPadding = getComputedStyle(this.bookmarkParent).padding;
+    const negativePadding = `-${backgroundContainerPadding}`;
     this.scrubberContainer.style.marginLeft = negativePadding;
     this.scrubberContainer.style.marginRight = negativePadding;
   }
@@ -360,7 +355,7 @@ export class ChapterContent {
       !this.scrubberBar ||
       !this.scrubberCircleContainer ||
       !this.scrubberCircle ||
-      !this.articleTag ||
+      !this.bookmarkParent ||
       !this.contentDiv
     ) {
       return;
@@ -395,7 +390,7 @@ export class ChapterContent {
     if (
       !this.firstParagraph ||
       !this.lastParagraph ||
-      !this.articleTag ||
+      !this.bookmarkParent ||
       !this.contentParagraphs ||
       !this.bookmarkDiv
     ) {
@@ -411,7 +406,7 @@ export class ChapterContent {
     }
 
     // Only move the bookmark if its new position would be further down than its old one.
-    if (this.bookmarkY + this.getAbsoluteY(this.articleTag, yCoord) <= yCoord) {
+    if (this.bookmarkY + this.getAbsoluteY(this.bookmarkParent, yCoord) <= yCoord) {
       // find the closest paragraph that's beeen scrolled up off the screen, set our bookmark there
       const nearestAboveParagraph = this.paragraphBinarySearch(this.contentParagraphs, yCoord);
       this.setBookmark(nearestAboveParagraph, yCoord);
@@ -452,8 +447,13 @@ export class ChapterContent {
    * @param paragraph Paragraph to move the bookmark atop.
    * @param yCoord The current y-coordinate of window.
    */
-  private setBookmark(paragraph: HTMLParagraphElement, yCoord: number): void {
-    if (!this.articleTag || !this.bookmarkDiv || !this.contentParagraphs || !this.lastParagraph) {
+  private setBookmark(paragraph: HTMLElement, yCoord: number): void {
+    if (
+      !this.bookmarkParent ||
+      !this.bookmarkDiv ||
+      !this.contentParagraphs ||
+      !this.lastParagraph
+    ) {
       return;
     }
 
@@ -461,9 +461,12 @@ export class ChapterContent {
 
     // Moving the bookmark
     const selectedParagraphTop = this.getAbsoluteY(paragraph, yCoord);
-    const articleTop = this.getAbsoluteY(this.articleTag, yCoord);
-    this.bookmarkY = Math.floor(selectedParagraphTop - articleTop);
+    const backgroundTop = this.getAbsoluteY(this.bookmarkParent, yCoord);
+    this.bookmarkY = Math.floor(selectedParagraphTop - backgroundTop);
     this.bookmarkDiv.style.top = `${this.bookmarkY}px`;
+
+    // Update the page's URL
+    this.bookmarkToUrl();
   }
 
   /**
@@ -472,7 +475,7 @@ export class ChapterContent {
    * @param paragraph The paragraph to set our completion marker at.
    * @param yCoord The current y-coordinate of the window.
    */
-  private setCompletion(paragraph: HTMLParagraphElement, yCoord: number): void {
+  private setCompletion(paragraph: HTMLElement, yCoord: number): void {
     if (!this.lastParagraph || !this.contentParagraphs) {
       return;
     }
@@ -498,10 +501,7 @@ export class ChapterContent {
     });
   }
 
-  private paragraphBinarySearch(
-    array: HTMLParagraphElement[],
-    startingYCoord: number
-  ): HTMLParagraphElement {
+  private paragraphBinarySearch(array: HTMLElement[], startingYCoord: number): HTMLElement {
     let front = 0;
     let back = array.length - 1;
 
