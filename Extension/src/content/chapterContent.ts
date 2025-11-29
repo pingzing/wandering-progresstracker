@@ -250,6 +250,19 @@ export class ChapterContent {
     });
     this.paragraphToolbar.appendChild(bookmarktoUrlButton);
 
+    const jumpToBookmarkButton = document.createElement('button');
+    jumpToBookmarkButton.type = 'button';
+    jumpToBookmarkButton.textContent = 'Jump to Bookmark';
+    jumpToBookmarkButton.addEventListener(`click`, _ => {
+      if (this.bookmarkedParagraph) {
+        this.bookmarkedParagraph.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    });
+    this.paragraphToolbar.appendChild(jumpToBookmarkButton);
+
     const closeButton = document.createElement(`button`);
     closeButton.type = `button`;
     closeButton.textContent = `X`;
